@@ -1,0 +1,12 @@
+# OS / editor cruft
+.DS_Store
+
+# Python
+__pycache__/
+*.py[cod]
+
+# Generated engagement working output (disposable renders — re-created per run).
+# The kit itself is tracked; an engagement's files are not.
+.keel/
+deliverables/
+discovery/

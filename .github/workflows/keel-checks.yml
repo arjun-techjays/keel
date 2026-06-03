@@ -1,0 +1,24 @@
+name: keel-checks
+
+# Gates the constitution (the standard) on every push and PR. The mechanical
+# checks parse the stable-ID crosswalk and fail loudly on a drifted count, an
+# orphan dimension, a dropped section, or a verdict that doesn't match its
+# findings. Stdlib Python only — no install step.
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Run Keel gates
+        run: bash checks/run_checks.sh
+        # To also gate a committed engagement, pass its dir(s), e.g.:
+        #   run: bash checks/run_checks.sh path/to/engagement

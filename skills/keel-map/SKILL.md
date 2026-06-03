@@ -1,0 +1,107 @@
+---
+name: keel-map
+description: "Audit raw discovery inputs — a one-line idea, a brief, PDFs, Word docs, spreadsheets, call transcripts, or a whole knowledge repo — against the Keel constitution and produce a Coverage Map: every applicable requirement dimension scored Covered / Partial / Gap with evidence, plus a prioritised open-questions register and a recommended discovery plan to close the gaps. Run this FIRST, at the very start of an engagement, before any design or discovery documents are written. Triggers on: 'map the discovery', 'where are the gaps', 'audit these inputs for scope completeness', 'what do we still need to find out', 'is this enough to scope or estimate'."
+---
+
+# Keel · Map
+
+The entry point of the kit. It does **not** write the deliverable documents — it tells you, against a fixed standard, exactly what is known, what is vague, what is missing, and how to find the rest. Everything it emits is the input to `keel-clarify`, `keel-generate`, and `keel-review`. (Skills don't call each other; they hand off through the files this one writes.)
+
+## The standard it scores against
+
+Read **`constitution.md`** *before doing anything else*. Look for it at the project root first, then the Keel kit root. It defines the Doctrine (the laws), the Project Profile (the axes that drive applicability), and the Dimension Catalog (what must be decided, per discipline). This skill never invents dimensions — it scores the catalog. The law references below (Law 7, Law 9, etc.) point at Part A of the constitution.
+
+## Where files go (the working layout)
+
+Keel keeps its machinery out of the user's way. Create these directories as needed and write to them exactly:
+
+- `.keel/` — **internal machinery** (audit/reference; the user rarely opens these): `coverage-map.md`, `asset-manifest.md`.
+- `discovery/` — **what the user acts on**: `open-questions.md`, `discovery-plan.md` (and later, `discovery/answers/` where the lead drops each round's material).
+
+Never write Keel outputs to the project root — the root stays clean for the client's own materials.
+
+## Inputs
+
+Whatever the project lead provides: direct-dropped key documents (always), and — in production — a larger corpus available via retrieval. Treat direct-drop as priority and presumptively authoritative when sources conflict, but **score against the full corpus, never only the dropped subset** (Law 9).
+
+## Outputs — written as files; this is the handoff
+
+- `.keel/coverage-map.md` — the confirmed profile, and every applicable dimension with its status, score, evidence, and any conflicts.
+- `discovery/open-questions.md` — the RAID open-questions seed; each tagged *must-close-before-estimate / proceed-with-assumption / too-uncertain→T&M / future-phase*.
+- `discovery/discovery-plan.md` — the recommended activities to close the gaps.
+- `.keel/asset-manifest.md` — every input, its type, and its processing status (including media not yet processed).
+
+## Workflow
+
+**0 · Load the standard.** Read `constitution.md`. Hold the Doctrine in mind throughout — especially: no weasel words, every score cites a source, conflicts are surfaced not resolved, nothing the lead gave you is dropped.
+
+**1 · Establish the Project Profile — and confirm it before anything else.**
+Read all inputs. Infer each of the 16 profile axes from the evidence; mark any you cannot infer as `unknown`. Present the inferred profile back as a compact table and ask the lead to confirm, correct, and fill the unknowns. **Do not proceed to scoring until the profile is confirmed** — it decides which dimensions even apply. (For a bare idea, most axes will be `unknown`; setting them is a two-minute classification, not a blocker.)
+
+**2 · Resolve every dimension's status — by ID.**
+For each catalog dimension, evaluate its *Applies-when* rule against the confirmed profile and stamp it **Required**, **N-A**, or **Recommended**. Record every N-A *with its reason* (Law 10) — it is a decision, not an omission. **Always refer to a dimension by its stable constitution ID** (e.g. `DAT-07`, `SCO-05`), never by prose label alone — the ID is the join key every downstream skill relies on, and prose drifts. Every coverage row, open question, and discovery activity carries the ID(s) it concerns.
+
+**3 · Score coverage, with evidence.**
+For each Required and Recommended dimension, search the evidence and classify:
+- **Covered** — addressed *and* clears the dimension's "Covered means" bar (specific, testable, unambiguous).
+- **Partial** — present but vague, incomplete, or failing the bar. Blocks on a Required dimension exactly like a Gap.
+- **Gap** — not addressed.
+
+Cite provenance on every Covered/Partial (file + page/section, or "client call, <date>"). On a RAG corpus, favour recall: a false Gap costs one wasted question, a false Covered costs missed scope — so do a second "did we really not find this?" pass before declaring a hard Gap. Where two sources disagree on the same dimension, raise a **conflict** in `discovery/open-questions.md` — never silently pick one (Law 7).
+
+**Scenario coverage (`SCO-08`, Law 11) — score per module, on the decision not the artifact.** For every module with a process workflow, walk the three scenario classes — happy / exception / edge. A class is satisfied when it is **either** evidenced by a real example traced to a source artifact (a sample document, record, screenshot, or transcript walkthrough) **or** explicitly dispositioned (N-A-with-reason / out-of-scope / assumption-with-impact). Score `SCO-08` **Covered** when no class is left in silence; **Partial** (blocks like a Gap) when a class is claimed-handled but neither exampled nor dispositioned — weight the **exception** class hardest, it is where fixed-bid creep enters; **Gap** when the workflow itself is unevidenced; **N-A** (with reason) for a module with no process workflow. Do **not** manufacture a false gap: a consciously recorded *"no edge case here, because X"* is Covered, not owed — the gate is on the *decision*, not on producing an artifact that may not exist. Where a class is genuinely in silence, the step-4 action is concrete: **request that scenario's example, or put the disposition decision to the lead** — name the workflow and the class.
+
+**4 · Disposition gaps and recommend discovery — derived fresh from THIS run's open set.**
+For each Required Gap/Partial (and each Recommended item the lead chose to include), do one of:
+- propose a **disposition** where one is clearly reasonable — assumption (with impact-if-wrong), explicit exclusion, defer-to-phase, or T&M; or
+- propose a **discovery activity** to close it, specifying: the method (stakeholder interview, workshop, data audit, technical spike, document request, *or a real-world working session that produces artifacts* — e.g. a UX design round whose screen inventory and state matrix are the "answer", not a chat reply), *why that method fits*, who to involve, the exact questions or data to gather, and which dimension(s) it closes.
+
+Cluster activities so one session closes many gaps (e.g. a single ops workshop closing eight).
+
+**The discovery plan is LIVING — regenerate it, never carry it forward.** On every `keel-map` run (including re-runs), derive `discovery/discovery-plan.md` *only* from the dimensions scored **Gap / Partial / undecided-Recommended in this same run's coverage map*. A dimension that has gone **Covered** since the last run **must drop out** of the plan — including out of any clustered activity that still bundles it (recompute the cluster; do not preserve a stale member). Re-derive activity IDs from the current open set. Stamp the file with the run date and the line *"Regenerated by keel-map on <date>; supersedes all prior versions."* A plan that lists an already-Covered dimension as work-to-do is the exact staleness this rule exists to prevent.
+
+**5 · Build the asset manifest.**
+List every input with its type and processing status. Register any media not processed (e.g. recorded calls not transcribed) as a coverage risk with a one-line note (Law 8) — it becomes an open question, not a silent omission. **Give every artifact a stable ID (`A1`, `A2`, …)** in this manifest: it is the registry that example provenance resolves against. A `SCO-08` worked example cites its artifact by this ID, and `check_generate` **fails any example citing an ID not registered here** — so a fabricated or typo'd provenance can't pass. Keep the ID stable across re-runs.
+
+**6 · Force the Recommended decisions.**
+Present every Recommended dimension to the lead for an explicit **include / exclude** choice. Record it; log a one-line reason for each exclude. Report any *undecided* Recommended dimension as blocking — optionality with a forced decision, never a silent default.
+
+**7 · Reconcile the outputs before writing — the anti-staleness sub-gates.**
+The four files must agree with each other on every re-run. Validate, and fix any drift before emitting:
+- **Plan ↔ coverage:** every dimension named anywhere in `discovery/discovery-plan.md` (including inside clustered activities) is currently **Gap / Partial / undecided-Recommended** in this run's coverage map. **No Covered or N-A dimension may appear as work-to-do.**
+- **Open-questions ↔ coverage:** every open *dimension-derived* `[BLOCK]` traces to a current Gap/Partial/conflict/undecided item; anything its source closed this round is marked resolved, not left dangling.
+- **Carry nothing forward by inertia:** a clustered activity, question, or plan line that referred to a now-Covered dimension is dropped or recomputed, never preserved stale.
+- **Preserve externally-raised items (the exception to the above).** Open questions tagged **`raised-by: keel-review`** or **`raised-by: keel-clarify`** are *not* derived from a catalog dimension — they were surfaced downstream (a review loophole, a follow-up clarify raised). **Re-score regenerates only the dimension-derived questions; it must carry these through untouched** unless the decision log shows them dispositioned. Dropping them as "stale" would silently re-open a scope hole the adversarial pass already caught — the exact failure this kit exists to prevent.
+
+If you find drift, the fix is to re-derive the *dimension-derived* items from the current coverage map (the single source of truth this run) while preserving the externally-raised, not-yet-dispositioned ones.
+
+**8 · Emit and summarise.**
+Write the four files. `.keel/coverage-map.md` **leads with a Blocking View** — the conflicts, the highest-severity blockers (ranked, each pointing to its open-question ID), and the count of undecided Recommended items — and relegates the full per-dimension scoring to an **Appendix**, so the default read is *what to act on*, not all ~80 rows. Then print a short summary in the terminal: the confirmed profile; counts (Required covered / partial / gap; Recommended included / excluded / undecided); the conflicts; the top blocking open questions; the path to `discovery/open-questions.md` so the lead knows where to act; and the single highest-value discovery activity to do next.
+
+## Exit criterion (the gate this skill reports against)
+
+`keel-map` is complete-for-now once the profile is confirmed and every applicable dimension is scored. It does **not** require gaps to be closed — that is `keel-clarify`'s job. It must, however, state plainly: *"N Required dimensions are Gap/Partial and M Recommended are undecided; these block `keel-generate` until resolved."*
+
+## Output shape — `.keel/coverage-map.md`
+
+```
+# Coverage Map — <engagement name>   (generated by keel-map, <date>)
+
+## Project profile (confirmed)        <the 16 axes, one line each; unknowns flagged>
+
+## Summary
+Required: X covered · Y partial · Z gap   |   Recommended: A in · B out · C undecided   |   Conflicts: N   |   Unprocessed: M
+
+## ▶ Blocking view — resolve before quoting   ← the default read
+- Conflicts: one line each
+- Top blockers, ranked, each pointing to its open-question ID
+- Count of undecided Recommended items
+- Readiness: "N blocking questions open → keel-generate gated"
+
+## Appendix — full scored catalog
+| ID | Dimension (discipline) | Status | Score | Evidence / provenance |   (one row per applicable dimension, keyed by constitution ID, grouped by discipline)
+```
+
+## Handoff
+
+`keel-clarify` reads `discovery/open-questions.md` + `discovery/discovery-plan.md` and loops until no Required dimension is open; `keel-generate` reads `.keel/coverage-map.md`. Re-run `keel-map` after each discovery round to re-score against the enlarged evidence — **all four outputs are living and regenerated together each run** (coverage map, open questions, discovery plan, asset manifest), never one-time snapshots. The discovery plan in particular must shrink as gaps close; it never accumulates already-Covered items.
