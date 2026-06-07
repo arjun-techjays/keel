@@ -59,6 +59,12 @@ export async function addEditor(projectId: string, userId: string): Promise<{ er
 
 export async function removeEditor(projectId: string, userId: string): Promise<{ error?: string }> {
   const supabase = await createClient();
+  const { count } = await supabase
+    .from("project_members")
+    .select("user_id", { count: "exact", head: true })
+    .eq("project_id", projectId);
+  if ((count ?? 0) <= 1) return { error: "A project needs at least one editor." };
+
   const { error } = await supabase
     .from("project_members")
     .delete()

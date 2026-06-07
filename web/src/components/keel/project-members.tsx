@@ -25,19 +25,22 @@ export function ProjectMembers({
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [sel, setSel] = useState("");
+  const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
 
   function add() {
     if (!sel) return;
     start(async () => {
-      await addEditor(projectId, sel);
-      setSel("");
+      const r = await addEditor(projectId, sel);
+      setError(r.error ?? null);
+      if (!r.error) setSel("");
       router.refresh();
     });
   }
   function remove(uid: string) {
     start(async () => {
-      await removeEditor(projectId, uid);
+      const r = await removeEditor(projectId, uid);
+      setError(r.error ?? null);
       router.refresh();
     });
   }
@@ -76,7 +79,7 @@ export function ProjectMembers({
                     <span className="truncate text-[13px] font-semibold text-ink">{m.full_name ?? m.email}</span>
                     <span className="truncate text-[11px] text-faint">{m.email}</span>
                   </div>
-                  {canManage && (
+                  {canManage && members.length > 1 && (
                     <button onClick={() => remove(m.user_id)} disabled={pending} className="rounded-md p-1.5 text-faint hover:bg-panel hover:text-gap">
                       <Trash2 className="h-4 w-4" strokeWidth={2} />
                     </button>
@@ -104,6 +107,7 @@ export function ProjectMembers({
                 </button>
               </div>
             )}
+            {error && <p className="text-[12px] font-medium text-gap">{error}</p>}
             {!canManage && (
               <p className="text-[12px] text-faint">Only the project creator or an admin can remove editors.</p>
             )}
