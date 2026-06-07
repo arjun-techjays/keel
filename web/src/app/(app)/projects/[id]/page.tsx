@@ -46,7 +46,9 @@ export default async function WorkspacePage({ params }: { params: Promise<{ id: 
     role === "admin" || p.created_by === userId || members.some((m) => m.user_id === userId);
   const canManage = role === "admin" || p.created_by === userId;
   const candidates = profiles.filter((pr) => !members.some((m) => m.user_id === pr.id));
-  const mcpUrl = `${process.env.KEEL_SERVICE_URL ?? ""}/mcp`;
+  // Trailing slash required — server serves at "/mcp/"; "/mcp" 307-redirects and
+  // the streamable client won't re-POST a body across it (large pushes hang).
+  const mcpUrl = `${process.env.KEEL_SERVICE_URL ?? ""}/mcp/`;
   const activeTokenCount = tokens.filter((t) => !t.revoked_at).length;
 
   // Coverage by discipline, computed from the dimensions table.

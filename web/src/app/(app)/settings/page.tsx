@@ -11,7 +11,9 @@ type Token = {
 
 export default async function SettingsPage() {
   const tokens = (await getTokens()) as Token[];
-  const mcpUrl = `${process.env.KEEL_SERVICE_URL ?? ""}/mcp`;
+  // Trailing slash required — server serves at "/mcp/"; "/mcp" 307-redirects and
+  // the streamable client won't re-POST a body across it (large pushes hang).
+  const mcpUrl = `${process.env.KEEL_SERVICE_URL ?? ""}/mcp/`;
 
   return (
     <div className="flex min-h-full flex-col">

@@ -94,7 +94,7 @@ A **Partial** (vague) answer blocks just like a **Gap** — that's deliberate. "
 
 This is the power workflow: generation runs in **your** Claude Code/Codex (your tokens, your machine), against Keel's **shared, gated state**. The agent reads/writes shared state through Keel's **remote MCP server**; you push the result to run the server-side gate.
 
-**MCP endpoint:** `https://keel-production-729b.up.railway.app/mcp`
+**MCP endpoint:** `https://keel-production-729b.up.railway.app/mcp/` — **keep the trailing slash.** Without it the request 307-redirects and large pushes hang.
 
 ### 6a. One-time setup — Claude Code
 
@@ -103,8 +103,10 @@ This is the power workflow: generation runs in **your** Claude Code/Codex (your 
 #    panel on a project) → Generate token. Copy it — it's shown once.
 
 # 2. Connect Keel's remote MCP server (the token authenticates every call)
-claude mcp add keel --transport http https://keel-production-729b.up.railway.app/mcp \
+claude mcp add keel --transport http https://keel-production-729b.up.railway.app/mcp/ \
   --header "Authorization: Bearer keel_pat_xxxxxxxx"
+#    ^ keep the trailing slash on /mcp/ — without it requests 307-redirect and pushes hang.
+#    Already added it without the slash? Re-add: claude mcp remove keel && claude mcp add … /mcp/ …
 
 # 3. Install the Keel skills into your project
 #    (clone the repo once, then copy the skill folders)
@@ -122,7 +124,7 @@ Codex reads MCP servers from `~/.codex/config.toml` (check your Codex version's 
 
 ```toml
 [mcp_servers.keel]
-url = "https://keel-production-729b.up.railway.app/mcp"
+url = "https://keel-production-729b.up.railway.app/mcp/"   # keep the trailing slash
 ```
 
 Install the skills/constitution/checks the same way as above, then restart Codex.

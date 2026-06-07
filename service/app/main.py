@@ -57,9 +57,6 @@ def constitution_raw():
         return PlainTextResponse("Constitution not found", status_code=404)
 
 
-# Mount the remote MCP server (streamable HTTP) for BYO agents at "/" so its
-# internal "/mcp" route is an exact match — no trailing-slash 307 redirect. The
-# explicit FastAPI routes above (/health, /constitution/*, checkout router) are
-# registered first and take precedence; only unmatched paths reach the MCP app.
+# Mount the remote MCP server (streamable HTTP) for BYO agents.
 if _mcp_app is not None:
-    app.mount("/", _mcp_app)
+    app.mount("/mcp", _mcp_app)

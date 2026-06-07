@@ -16,12 +16,8 @@ from . import checkout_core as core
 from mcp.server.fastmcp import FastMCP
 from mcp.server.transport_security import TransportSecuritySettings
 
-# streamable_http_path="/mcp" + mounting the inner app at "/" (see main.py) makes
-# the public endpoint an EXACT-match route at "/mcp" — so POST/GET /mcp is served
-# directly with no trailing-slash 307 redirect. (Previously the app served at "/"
-# mounted at "/mcp", so Starlette's Mount 307-redirected "/mcp" -> "/mcp/"; the
-# streamable-HTTP client doesn't reliably re-POST a body across that redirect, so
-# pushes — the largest payloads — would hang.)
+# streamable_http_path="/" so that mounting the app at "/mcp" yields the public
+# endpoint at "/mcp" (with the default "/mcp" it would double to "/mcp/mcp").
 #
 # transport_security keeps DNS-rebinding protection on but allowlists our public
 # host. FastMCP otherwise auto-allows localhost only (its default bind host is
@@ -29,7 +25,7 @@ from mcp.server.transport_security import TransportSecuritySettings
 # behind Railway's domain. Add any custom domain to allowed_hosts here.
 mcp = FastMCP(
     "keel",
-    streamable_http_path="/mcp",
+    streamable_http_path="/",
     transport_security=TransportSecuritySettings(
         enable_dns_rebinding_protection=True,
         allowed_hosts=[
