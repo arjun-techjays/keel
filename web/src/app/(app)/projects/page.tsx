@@ -60,9 +60,15 @@ export default async function ProjectsPage() {
           </div>
 
           {projects.map((p, i) => {
-            const lock = (p.locks as unknown as LockRow[] | null)?.find(
-              (l) => l.status === "held",
-            );
+            // `locks` is a to-one relation (locks.project_id is its PK), so
+            // PostgREST returns it as a single object or null — never an array.
+            // Guard both shapes so calling code never does object.find().
+            const lockRow = p.locks as unknown as LockRow | LockRow[] | null;
+            const lock = Array.isArray(lockRow)
+              ? lockRow.find((l) => l.status === "held")
+              : lockRow?.status === "held"
+                ? lockRow
+                : undefined;
             return (
               <Link
                 key={p.id}
