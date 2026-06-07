@@ -114,6 +114,15 @@ export async function getTeamActivity() {
   return data ?? [];
 }
 
+export async function getTokens() {
+  const sb = await createClient();
+  const { data } = await sb
+    .from("personal_access_tokens")
+    .select("id,name,created_at,last_used_at,revoked_at")
+    .order("created_at", { ascending: false });
+  return data ?? [];
+}
+
 export async function getActivity() {
   const sb = await createClient();
   const { data } = await sb

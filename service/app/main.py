@@ -33,8 +33,8 @@ def constitution_raw():
 # Mount the remote MCP server (streamable HTTP) for BYO agents. Mounted
 # defensively so a transport/API mismatch never takes down the REST service.
 try:
-    from .mcp_server import mcp as _mcp
+    from .mcp_server import mcp_http_app
 
-    app.mount("/mcp", _mcp.streamable_http_app())
+    app.mount("/mcp", mcp_http_app())
 except Exception as exc:  # pragma: no cover
     print(f"MCP mount skipped: {exc}")

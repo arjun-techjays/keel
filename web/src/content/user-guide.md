@@ -10,29 +10,7 @@ New here? Read §1–§4 first. Working with Claude Code or Codex? Jump to §6 f
 
 Scope creep starts with **silence** (things nobody decided) and **ambiguity** (things decided vaguely). Keel attacks both: it scores your discovery against an exhaustive standard (the **constitution**), forces every gap to a real answer or an explicit decision, and **blocks** you from freezing until the pack holds together.
 
-It is **not** a straight line — it's two loops:
-
-```
-   ┌──────────────── re-map to re-score ─────────────────┐
-   │                                                      │
-   ▼                                                      │
-┌───────┐   questions    ┌─────────┐  answers /          │
-│  MAP  │ ─────────────▶ │ CLARIFY │  dispositions ──────┘
-└───────┘                └─────────┘
-   │   Loop 1: map ⇄ clarify until [BLOCK] = 0
-   ▼
-┌──────────┐            ┌────────┐   findings reopen
-│ GENERATE │ ─────────▶ │ REVIEW │   questions
-└──────────┘            └────────┘ ───────────┐
-   ▲                                           ▼
-   └──── re-generate ◀──── back to CLARIFY ◀───┘
-       Loop 2: generate → review → clarify until review is clean
-   │
-   ▼
-┌────────┐
-│ FREEZE │   review clean  +  every Recommended decided  +  client signs
-└────────┘
-```
+It is **not** a straight line — it's two loops (see the diagram above):
 
 - **Map** scores what you have against the standard and lists the open questions.
 - **Clarify** drives each open question to a real answer or an explicit decision. New answers change the score, so you **re-map** — that's **Loop 1**, repeated until there are zero blockers.

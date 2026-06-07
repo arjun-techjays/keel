@@ -1,5 +1,5 @@
 import {
-  getProject, getDimensions, getQuestions, getLatestReview, getLock, getSessionUserId,
+  getProject, getDimensions, getQuestions, getLatestReview, getLock, getSessionUserId, getMyRole,
 } from "@/lib/queries";
 import { CheckoutBar } from "@/components/keel/checkout-bar";
 import { disciplineName, DISCIPLINE_ORDER } from "@/lib/disciplines";
@@ -22,13 +22,14 @@ const freezeLabel: Record<string, { label: string; color: string }> = {
 
 export default async function WorkspacePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const [p, dims, questions, review, lock, userId] = await Promise.all([
+  const [p, dims, questions, review, lock, userId, role] = await Promise.all([
     getProject(id),
     getDimensions(id),
     getQuestions(id),
     getLatestReview(id),
     getLock(id),
     getSessionUserId(),
+    getMyRole(),
   ]);
 
   if (!p) {
@@ -94,7 +95,7 @@ export default async function WorkspacePage({ params }: { params: Promise<{ id: 
             </span>
           </div>
         </div>
-        <CheckoutBar projectId={id} lock={lock} currentUserId={userId} />
+        <CheckoutBar projectId={id} lock={lock} currentUserId={userId} isAdmin={role === "admin"} />
       </div>
 
       <div className="flex flex-col gap-[26px] px-8 py-7 pt-1">

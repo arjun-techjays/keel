@@ -36,34 +36,10 @@ async function callService(path: string, init?: RequestInit): Promise<SvcResult>
   return { ok: res.ok, status: res.status, body };
 }
 
-export async function pullProject(projectId: string): Promise<SvcResult> {
-  const r = await callService(`/projects/${projectId}/pull`, { method: "POST" });
-  revalidatePath(`/projects/${projectId}`);
-  return r;
-}
-
-export async function releaseProject(projectId: string): Promise<SvcResult> {
-  const r = await callService(`/projects/${projectId}/release`, { method: "POST" });
-  revalidatePath(`/projects/${projectId}`);
-  return r;
-}
-
-export async function heartbeatProject(projectId: string): Promise<SvcResult> {
-  return callService(`/projects/${projectId}/heartbeat`, { method: "POST" });
-}
-
-export async function pushProject(projectId: string, formData: FormData): Promise<SvcResult> {
-  const file = formData.get("file");
-  const phase = (formData.get("phase") as string) || "generate";
-  if (!(file instanceof File)) {
-    return { ok: false, status: 400, body: { detail: "No file provided" } };
-  }
-  const forward = new FormData();
-  forward.append("file", file, file.name);
-  const r = await callService(`/projects/${projectId}/push?phase=${phase}`, {
-    method: "POST",
-    body: forward,
-  });
+// Pull / push / release are driven by the agent over MCP. The web only offers an
+// admin override to break a genuinely stuck lock.
+export async function forceReleaseProject(projectId: string): Promise<SvcResult> {
+  const r = await callService(`/projects/${projectId}/force-release`, { method: "POST" });
   revalidatePath(`/projects/${projectId}`);
   return r;
 }

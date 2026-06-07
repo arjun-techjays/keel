@@ -1,6 +1,7 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { Markdown } from "@/components/keel/markdown";
+import { PipelineDiagram } from "@/components/keel/pipeline-diagram";
 
 export default async function GuidePage() {
   let md = "";
@@ -18,8 +19,14 @@ export default async function GuidePage() {
           <p className="text-[13px] text-muted-ink">How to use Keel — in the app and from your own agent.</p>
         </div>
       </div>
-      <div className="px-8 py-7">
-        <div className="mx-auto max-w-[820px] rounded-[14px] border border-hairline bg-white px-10 py-9">
+      <div className="mx-auto flex w-full max-w-[820px] flex-col gap-7 px-8 py-7">
+        <div className="rounded-[14px] border border-hairline bg-white px-8 py-7">
+          <span className="text-[11px] font-semibold uppercase tracking-[0.07em] text-faint">The pipeline at a glance</span>
+          <div className="pt-4">
+            <PipelineDiagram />
+          </div>
+        </div>
+        <div className="rounded-[14px] border border-hairline bg-white px-10 py-9">
           <Markdown content={md} />
         </div>
       </div>

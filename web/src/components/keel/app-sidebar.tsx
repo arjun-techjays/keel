@@ -8,6 +8,7 @@ import {
   ScrollText,
   Activity,
   BookOpen,
+  Settings,
   LogOut,
 } from "lucide-react";
 import { Wordmark } from "./wordmark";
@@ -21,6 +22,7 @@ const NAV = [
   { href: "/constitution", label: "Constitution", icon: ScrollText, adminOnly: false },
   { href: "/activity", label: "Activity", icon: Activity, adminOnly: false },
   { href: "/guide", label: "Guide", icon: BookOpen, adminOnly: false },
+  { href: "/settings", label: "Settings", icon: Settings, adminOnly: false },
 ];
 
 export function AppSidebar({
