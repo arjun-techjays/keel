@@ -43,8 +43,8 @@ export function ConnectAgent({
   const generated = !!state?.token;
   const token = state?.token ?? "<YOUR_TOKEN>";
 
-  const gitCmd = `git clone ${REPO}
-cp -r keel/skills/keel-* .claude/skills/ && cp keel/constitution.md . && cp -r keel/checks .`;
+  const gitClone = `git clone ${REPO}`;
+  const gitInstall = `mkdir -p .claude/skills && cp -r keel/skills/keel-* .claude/skills/ && cp keel/constitution.md . && cp -r keel/checks .`;
   const mcpPrefix =
     tab === "claude"
       ? `claude mcp add keel --transport http ${mcpUrl} --header "Authorization: Bearer `
@@ -84,7 +84,10 @@ cp -r keel/skills/keel-* .claude/skills/ && cp keel/constitution.md . && cp -r k
             {/* Step 1 — skills via git */}
             <div className="flex flex-col gap-2.5">
               <span className="text-[12px] font-semibold text-ink">1 · Install the Keel skills</span>
-              <CmdBlock id="git" text={gitCmd} copiedKey={copied} onCopy={copy} />
+              <span className="-mb-1 text-[12px] text-muted-ink">From your project folder, clone the repo:</span>
+              <CmdBlock id="clone" text={gitClone} copiedKey={copied} onCopy={copy} />
+              <span className="-mb-1 text-[12px] text-muted-ink">then copy the skills, constitution, and checks in:</span>
+              <CmdBlock id="install" text={gitInstall} copiedKey={copied} onCopy={copy} />
             </div>
 
             {/* Step 2 — MCP */}
@@ -100,13 +103,13 @@ cp -r keel/skills/keel-* .claude/skills/ && cp keel/constitution.md . && cp -r k
                 </div>
               </div>
               <div className="relative">
-                <div className="overflow-hidden rounded-[10px] bg-ink px-4 py-3.5 pr-10 font-mono text-[11.5px] leading-relaxed text-[#e6e8ec]" style={{ whiteSpace: "pre-wrap", wordBreak: "break-all" }}>
+                <div className="overflow-hidden rounded-[10px] bg-ink px-4 py-4 pr-10 font-mono text-[11.5px] text-[#e6e8ec]" style={{ whiteSpace: "pre-wrap", wordBreak: "break-all", lineHeight: 2.2 }}>
                   {mcpPrefix}
                   {generated ? (
-                    <span className="rounded bg-white/15 px-1 text-white">{token}</span>
+                    <span className="mx-1 rounded bg-white/15 px-1.5 py-1 align-middle text-white">{token}</span>
                   ) : (
                     <form action={formAction} className="inline">
-                      <button type="submit" disabled={pending} className="mx-0.5 inline-flex items-center gap-1 rounded-md bg-white px-2 py-0.5 align-middle text-[11px] font-semibold text-ink hover:bg-panel disabled:opacity-60">
+                      <button type="submit" disabled={pending} className="mx-1.5 inline-flex items-center gap-1.5 rounded-md bg-white px-2.5 py-1 align-middle text-[11px] font-semibold text-ink hover:bg-panel disabled:opacity-60">
                         <KeyRound className="h-3 w-3" strokeWidth={2} />
                         {pending ? "Generating…" : "Generate token"}
                       </button>
