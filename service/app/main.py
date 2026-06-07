@@ -32,7 +32,30 @@ async def lifespan(app: FastAPI):
         yield
 
 
+class _MCPNoRedirect:
+    """Serve the MCP endpoint at both "/mcp" and "/mcp/" with no 307 redirect.
+
+    The streamable-HTTP app is mounted at "/mcp" and serves at "/mcp/", so a bare
+    "/mcp" would hit Starlette's Mount trailing-slash redirect (307). The
+    streamable-HTTP client doesn't reliably re-POST a request body across that
+    redirect, so large pushes hang. Rewrite "/mcp" -> "/mcp/" in-process (before
+    routing) so the bare path is served directly, regardless of how a client
+    normalizes the configured URL.
+    """
+
+    def __init__(self, app):
+        self.app = app
+
+    async def __call__(self, scope, receive, send):
+        if scope.get("type") == "http" and scope.get("path") == "/mcp":
+            scope = dict(scope)
+            scope["path"] = "/mcp/"
+            scope["raw_path"] = b"/mcp/"
+        await self.app(scope, receive, send)
+
+
 app = FastAPI(title="Keel Service", version="0.1.0", lifespan=lifespan)
+app.add_middleware(_MCPNoRedirect)
 app.include_router(checkout.router)
 
 
