@@ -1,5 +1,7 @@
-import { ArrowDownToLine } from "lucide-react";
-import { getProject, getDimensions, getQuestions, getLatestReview } from "@/lib/queries";
+import {
+  getProject, getDimensions, getQuestions, getLatestReview, getLock, getSessionUserId,
+} from "@/lib/queries";
+import { CheckoutBar } from "@/components/keel/checkout-bar";
 import { disciplineName, DISCIPLINE_ORDER } from "@/lib/disciplines";
 import { StatSurface } from "@/components/keel/stat-surface";
 import { PhasePipeline } from "@/components/keel/phase-pipeline";
@@ -20,11 +22,13 @@ const freezeLabel: Record<string, { label: string; color: string }> = {
 
 export default async function WorkspacePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const [p, dims, questions, review] = await Promise.all([
+  const [p, dims, questions, review, lock, userId] = await Promise.all([
     getProject(id),
     getDimensions(id),
     getQuestions(id),
     getLatestReview(id),
+    getLock(id),
+    getSessionUserId(),
   ]);
 
   if (!p) {
@@ -90,10 +94,7 @@ export default async function WorkspacePage({ params }: { params: Promise<{ id: 
             </span>
           </div>
         </div>
-        <button className="flex shrink-0 items-center gap-2 rounded-[9px] bg-cobalt px-4 py-[11px] text-[13px] font-semibold text-white">
-          <ArrowDownToLine className="h-[15px] w-[15px]" strokeWidth={2} />
-          Pull &amp; lock
-        </button>
+        <CheckoutBar projectId={id} lock={lock} currentUserId={userId} />
       </div>
 
       <div className="flex flex-col gap-[26px] px-8 py-7 pt-1">

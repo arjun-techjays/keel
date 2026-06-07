@@ -68,6 +68,24 @@ export async function getLatestReview(projectId: string) {
   return { run, findings: findings ?? [] };
 }
 
+export async function getLock(projectId: string) {
+  const sb = await createClient();
+  const { data } = await sb
+    .from("locks")
+    .select("*, holder:profiles(full_name,initials)")
+    .eq("project_id", projectId)
+    .maybeSingle();
+  return data;
+}
+
+export async function getSessionUserId() {
+  const sb = await createClient();
+  const {
+    data: { user },
+  } = await sb.auth.getUser();
+  return user?.id ?? null;
+}
+
 export async function getProjectQuality() {
   const sb = await createClient();
   const { data } = await sb.from("v_project_quality").select("*");
