@@ -1,7 +1,10 @@
 import {
   getProject, getDimensions, getQuestions, getLatestReview, getLock, getSessionUserId, getMyRole,
+  getProjectMembers, getAllProfiles,
 } from "@/lib/queries";
 import { CheckoutBar } from "@/components/keel/checkout-bar";
+import { ProjectMembers } from "@/components/keel/project-members";
+import { ConnectAgent } from "@/components/keel/connect-agent";
 import { disciplineName, DISCIPLINE_ORDER } from "@/lib/disciplines";
 import { StatSurface } from "@/components/keel/stat-surface";
 import { PhasePipeline } from "@/components/keel/phase-pipeline";
@@ -22,7 +25,7 @@ const freezeLabel: Record<string, { label: string; color: string }> = {
 
 export default async function WorkspacePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const [p, dims, questions, review, lock, userId, role] = await Promise.all([
+  const [p, dims, questions, review, lock, userId, role, members, profiles] = await Promise.all([
     getProject(id),
     getDimensions(id),
     getQuestions(id),
@@ -30,11 +33,19 @@ export default async function WorkspacePage({ params }: { params: Promise<{ id: 
     getLock(id),
     getSessionUserId(),
     getMyRole(),
+    getProjectMembers(id),
+    getAllProfiles(),
   ]);
 
   if (!p) {
     return <div className="p-8 text-muted-ink">Project not found.</div>;
   }
+
+  const isEditor =
+    role === "admin" || p.created_by === userId || members.some((m) => m.user_id === userId);
+  const canManage = role === "admin" || p.created_by === userId;
+  const candidates = profiles.filter((pr) => !members.some((m) => m.user_id === pr.id));
+  const mcpUrl = `${process.env.KEEL_SERVICE_URL ?? ""}/mcp`;
 
   // Coverage by discipline, computed from the dimensions table.
   const byDisc = DISCIPLINE_ORDER.map((dId) => {
@@ -95,7 +106,23 @@ export default async function WorkspacePage({ params }: { params: Promise<{ id: 
             </span>
           </div>
         </div>
-        <CheckoutBar projectId={id} lock={lock} currentUserId={userId} isAdmin={role === "admin"} />
+        <div className="flex items-center gap-2.5">
+          <ProjectMembers
+            projectId={id}
+            members={members}
+            candidates={candidates}
+            canAdd={isEditor}
+            canManage={canManage}
+          />
+          {isEditor ? (
+            <ConnectAgent mcpUrl={mcpUrl} />
+          ) : (
+            <span className="rounded-[9px] border border-hairline bg-panel px-3 py-2 text-xs font-medium text-muted-ink">
+              View only
+            </span>
+          )}
+          <CheckoutBar projectId={id} lock={lock} currentUserId={userId} isAdmin={role === "admin"} />
+        </div>
       </div>
 
       <div className="flex flex-col gap-[26px] px-8 py-7 pt-1">

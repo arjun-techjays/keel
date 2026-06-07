@@ -86,6 +86,31 @@ export async function getSessionUserId() {
   return user?.id ?? null;
 }
 
+export async function getProjectMembers(projectId: string) {
+  const sb = await createClient();
+  const { data: mem } = await sb
+    .from("project_members")
+    .select("user_id, added_by")
+    .eq("project_id", projectId);
+  const ids = (mem ?? []).map((m) => m.user_id);
+  if (ids.length === 0) return [];
+  const { data: profs } = await sb
+    .from("profiles")
+    .select("id,full_name,email,initials")
+    .in("id", ids);
+  const byId = new Map((profs ?? []).map((p) => [p.id, p]));
+  return (mem ?? []).map((m) => ({ user_id: m.user_id, ...byId.get(m.user_id) }));
+}
+
+export async function getAllProfiles() {
+  const sb = await createClient();
+  const { data } = await sb
+    .from("profiles")
+    .select("id,full_name,email,initials")
+    .order("full_name");
+  return data ?? [];
+}
+
 export async function getMyRole() {
   const sb = await createClient();
   const {

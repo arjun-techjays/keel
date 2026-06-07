@@ -70,6 +70,8 @@ def keel_answer_question(project_id: str, q_id: str, answer: str) -> dict:
     """Record a real answer to an open question and close it."""
     uid = _uid()
     sb = admin()
+    if not core.is_editor(sb, uid, project_id):
+        return {"ok": False, "error": "You're not an editor of this project"}
     sb.table("questions").update(
         {"answer_text": answer, "disposition": "answered", "disposition_label": "Answered"}
     ).eq("project_id", project_id).eq("q_id", q_id).execute()
@@ -95,6 +97,8 @@ def keel_disposition_question(project_id: str, q_id: str, kind: str, note: str =
     disp, label = mapping[kind]
     uid = _uid()
     sb = admin()
+    if not core.is_editor(sb, uid, project_id):
+        return {"ok": False, "error": "You're not an editor of this project"}
     sb.table("questions").update(
         {"disposition": disp, "disposition_label": label}
     ).eq("project_id", project_id).eq("q_id", q_id).execute()

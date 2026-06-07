@@ -43,3 +43,27 @@ export async function forceReleaseProject(projectId: string): Promise<SvcResult>
   revalidatePath(`/projects/${projectId}`);
   return r;
 }
+
+// Editor management (RLS enforces: any editor adds, creator/admin removes).
+export async function addEditor(projectId: string, userId: string): Promise<{ error?: string }> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const { error } = await supabase
+    .from("project_members")
+    .insert({ project_id: projectId, user_id: userId, role: "editor", added_by: user?.id });
+  revalidatePath(`/projects/${projectId}`);
+  return { error: error?.message };
+}
+
+export async function removeEditor(projectId: string, userId: string): Promise<{ error?: string }> {
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("project_members")
+    .delete()
+    .eq("project_id", projectId)
+    .eq("user_id", userId);
+  revalidatePath(`/projects/${projectId}`);
+  return { error: error?.message };
+}

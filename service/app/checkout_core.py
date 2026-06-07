@@ -37,6 +37,21 @@ def _log(sb, project_id, user_id, action, target=None, meta=None):
     ).execute()
 
 
+def is_editor(sb, user_id: str, project_id: str) -> bool:
+    """View is open to all; editing requires membership, ownership, or admin."""
+    pr = sb.table("profiles").select("role").eq("id", user_id).limit(1).execute().data
+    if pr and pr[0].get("role") == "admin":
+        return True
+    m = (
+        sb.table("project_members").select("user_id")
+        .eq("project_id", project_id).eq("user_id", user_id).limit(1).execute().data
+    )
+    if m:
+        return True
+    p = sb.table("projects").select("created_by").eq("id", project_id).limit(1).execute().data
+    return bool(p and p[0].get("created_by") == user_id)
+
+
 def _engagement_root(extracted: str) -> str:
     candidates = [extracted] + [os.path.join(extracted, n) for n in os.listdir(extracted)]
     for cand in candidates:
@@ -50,6 +65,8 @@ def _engagement_root(extracted: str) -> str:
 
 def do_pull(user_id: str, project_id: str) -> dict:
     sb = admin()
+    if not is_editor(sb, user_id, project_id):
+        return {"ok": False, "status": 403, "error": "You're not an editor of this project"}
     lock = _get_lock(sb, project_id)
     if lock and lock["status"] == "held" and lock["holder_id"] != user_id and not _is_stale(lock):
         return {"ok": False, "status": 409, "error": "locked", "holder_id": lock["holder_id"]}
@@ -109,6 +126,8 @@ def do_force_release(admin_user_id: str, project_id: str) -> dict:
 
 def do_push(user_id: str, project_id: str, content: bytes, phase: str = "generate") -> dict:
     sb = admin()
+    if not is_editor(sb, user_id, project_id):
+        return {"ok": False, "status": 403, "error": "You're not an editor of this project"}
     lock = _get_lock(sb, project_id)
     if not lock or lock["holder_id"] != user_id or lock["status"] != "held":
         return {"ok": False, "status": 409, "error": "You do not hold this lock"}
