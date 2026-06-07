@@ -45,13 +45,12 @@ export function ConnectAgent({
 
   const gitCmd = `git clone ${REPO}
 cp -r keel/skills/keel-* .claude/skills/ && cp keel/constitution.md . && cp -r keel/checks .`;
-  const mcpCmd =
+  const mcpPrefix =
     tab === "claude"
-      ? `claude mcp add keel --transport http ${mcpUrl} --header "Authorization: Bearer ${token}"`
-      : `# ~/.codex/config.toml
-[mcp_servers.keel]
-url = "${mcpUrl}"
-http_headers = { Authorization = "Bearer ${token}" }`;
+      ? `claude mcp add keel --transport http ${mcpUrl} --header "Authorization: Bearer `
+      : `# ~/.codex/config.toml\n[mcp_servers.keel]\nurl = "${mcpUrl}"\nhttp_headers = { Authorization = "Bearer `;
+  const mcpSuffix = tab === "claude" ? `"` : `" }`;
+  const mcpCopyText = `${mcpPrefix}${generated ? token : "<YOUR_TOKEN>"}${mcpSuffix}`;
 
   function copy(key: string, text: string) {
     navigator.clipboard.writeText(text);
@@ -100,28 +99,35 @@ http_headers = { Authorization = "Bearer ${token}" }`;
                   ))}
                 </div>
               </div>
-              <CmdBlock id="mcp" text={mcpCmd} copiedKey={copied} onCopy={copy} />
+              <div className="relative">
+                <div className="overflow-hidden rounded-[10px] bg-ink px-4 py-3.5 pr-10 font-mono text-[11.5px] leading-relaxed text-[#e6e8ec]" style={{ whiteSpace: "pre-wrap", wordBreak: "break-all" }}>
+                  {mcpPrefix}
+                  {generated ? (
+                    <span className="rounded bg-white/15 px-1 text-white">{token}</span>
+                  ) : (
+                    <form action={formAction} className="inline">
+                      <button type="submit" disabled={pending} className="mx-0.5 inline-flex items-center gap-1 rounded-md bg-white px-2 py-0.5 align-middle text-[11px] font-semibold text-ink hover:bg-panel disabled:opacity-60">
+                        <KeyRound className="h-3 w-3" strokeWidth={2} />
+                        {pending ? "Generating…" : "Generate token"}
+                      </button>
+                    </form>
+                  )}
+                  {mcpSuffix}
+                </div>
+                <button onClick={() => copy("mcp", mcpCopyText)} className="absolute right-2 top-2 flex items-center gap-1 rounded-md border border-white/15 bg-white/10 px-2 py-1 text-[11px] font-semibold text-white hover:bg-white/20">
+                  {copied === "mcp" ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+                </button>
+              </div>
 
-              {/* token slot */}
               {generated ? (
                 <p className="flex items-center gap-1.5 text-[12px] font-semibold text-covered">
-                  <Check className="h-4 w-4" strokeWidth={2.5} /> Token filled in above — copy now, it won&apos;t be shown again.
+                  <Check className="h-4 w-4" strokeWidth={2.5} /> Token created — copy now, it won&apos;t be shown again.
                 </p>
               ) : (
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="text-[12px] text-muted-ink">
-                    Replace <code className="font-mono text-ink">&lt;YOUR_TOKEN&gt;</code> with a token —
-                  </span>
-                  <form action={formAction}>
-                    <button type="submit" disabled={pending} className="flex shrink-0 items-center gap-1.5 rounded-[8px] bg-cobalt px-3 py-1.5 text-[12px] font-semibold text-white disabled:opacity-60">
-                      <KeyRound className="h-3.5 w-3.5" strokeWidth={2} />
-                      {pending ? "Generating…" : "Generate token"}
-                    </button>
-                  </form>
-                  {existingTokenCount > 0 && (
-                    <span className="text-[12px] text-faint">or paste one you saved.</span>
-                  )}
-                </div>
+                <p className="text-[12px] text-faint">
+                  Click <span className="font-semibold text-muted-ink">Generate token</span>
+                  {existingTokenCount > 0 ? ", or Copy and paste a token you saved." : " — it fills into the command."}
+                </p>
               )}
               {state?.error && <p className="text-[12px] font-medium text-gap">{state.error}</p>}
             </div>
