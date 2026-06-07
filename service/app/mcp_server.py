@@ -14,10 +14,28 @@ from .pat import current_user, verify_pat
 from . import checkout_core as core
 
 from mcp.server.fastmcp import FastMCP
+from mcp.server.transport_security import TransportSecuritySettings
 
 # streamable_http_path="/" so that mounting the app at "/mcp" yields the public
 # endpoint at "/mcp" (with the default "/mcp" it would double to "/mcp/mcp").
-mcp = FastMCP("keel", streamable_http_path="/")
+#
+# transport_security keeps DNS-rebinding protection on but allowlists our public
+# host. FastMCP otherwise auto-allows localhost only (its default bind host is
+# 127.0.0.1), which 421s "Invalid Host header" on every request once deployed
+# behind Railway's domain. Add any custom domain to allowed_hosts here.
+mcp = FastMCP(
+    "keel",
+    streamable_http_path="/",
+    transport_security=TransportSecuritySettings(
+        enable_dns_rebinding_protection=True,
+        allowed_hosts=[
+            "keel-production-729b.up.railway.app",
+            "keel-production-729b.up.railway.app:*",
+            # add custom domain here later
+        ],
+        allowed_origins=["*"],
+    ),
+)
 
 
 def _uid() -> str | None:
