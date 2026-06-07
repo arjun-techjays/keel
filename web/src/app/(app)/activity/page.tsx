@@ -1,4 +1,5 @@
-import { getActivity } from "@/lib/queries";
+import { redirect } from "next/navigation";
+import { getActivity, getMyRole } from "@/lib/queries";
 import { AvatarChip } from "@/components/keel/avatar-chip";
 
 const ACTION_LABEL: Record<string, string> = {
@@ -32,6 +33,7 @@ type Row = {
 };
 
 export default async function ActivityPage() {
+  if ((await getMyRole()) !== "admin") redirect("/projects");
   const rows = (await getActivity()) as unknown as Row[];
 
   return (

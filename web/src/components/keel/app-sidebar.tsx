@@ -20,7 +20,7 @@ const NAV = [
   { href: "/projects", label: "Projects", icon: FolderKanban, adminOnly: false },
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard, adminOnly: true },
   { href: "/constitution", label: "Constitution", icon: ScrollText, adminOnly: false },
-  { href: "/activity", label: "Activity", icon: Activity, adminOnly: false },
+  { href: "/activity", label: "Activity", icon: Activity, adminOnly: true },
   { href: "/guide", label: "Guide", icon: BookOpen, adminOnly: false },
   { href: "/settings", label: "Settings", icon: Settings, adminOnly: false },
 ];

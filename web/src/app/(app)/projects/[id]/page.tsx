@@ -1,6 +1,6 @@
 import {
   getProject, getDimensions, getQuestions, getLatestReview, getLock, getSessionUserId, getMyRole,
-  getProjectMembers, getAllProfiles,
+  getProjectMembers, getAllProfiles, getTokens,
 } from "@/lib/queries";
 import { CheckoutBar } from "@/components/keel/checkout-bar";
 import { ProjectMembers } from "@/components/keel/project-members";
@@ -25,7 +25,7 @@ const freezeLabel: Record<string, { label: string; color: string }> = {
 
 export default async function WorkspacePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const [p, dims, questions, review, lock, userId, role, members, profiles] = await Promise.all([
+  const [p, dims, questions, review, lock, userId, role, members, profiles, tokens] = await Promise.all([
     getProject(id),
     getDimensions(id),
     getQuestions(id),
@@ -35,6 +35,7 @@ export default async function WorkspacePage({ params }: { params: Promise<{ id: 
     getMyRole(),
     getProjectMembers(id),
     getAllProfiles(),
+    getTokens(),
   ]);
 
   if (!p) {
@@ -46,6 +47,7 @@ export default async function WorkspacePage({ params }: { params: Promise<{ id: 
   const canManage = role === "admin" || p.created_by === userId;
   const candidates = profiles.filter((pr) => !members.some((m) => m.user_id === pr.id));
   const mcpUrl = `${process.env.KEEL_SERVICE_URL ?? ""}/mcp`;
+  const activeTokenCount = tokens.filter((t) => !t.revoked_at).length;
 
   // Coverage by discipline, computed from the dimensions table.
   const byDisc = DISCIPLINE_ORDER.map((dId) => {
@@ -125,7 +127,7 @@ export default async function WorkspacePage({ params }: { params: Promise<{ id: 
             canManage={canManage}
           />
           {isEditor ? (
-            <ConnectAgent mcpUrl={mcpUrl} />
+            <ConnectAgent mcpUrl={mcpUrl} existingTokenCount={activeTokenCount} />
           ) : (
             <span className="rounded-[9px] border border-hairline bg-panel px-3 py-2 text-xs font-medium text-muted-ink">
               View only
