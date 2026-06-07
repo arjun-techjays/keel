@@ -1,5 +1,6 @@
+import { redirect } from "next/navigation";
 import { TriangleAlert } from "lucide-react";
-import { getProjects, getProjectQuality, getCloseMix, getTeamActivity } from "@/lib/queries";
+import { getProjects, getProjectQuality, getCloseMix, getTeamActivity, getMyRole } from "@/lib/queries";
 import { AvatarChip } from "@/components/keel/avatar-chip";
 
 const CLOSE_COLORS: Record<string, string> = {
@@ -14,6 +15,8 @@ const CLOSE_LABELS: Record<string, string> = {
 const CLOSE_ORDER = ["answered", "assumption", "deferred", "excluded"];
 
 export default async function DashboardPage() {
+  if ((await getMyRole()) !== "admin") redirect("/projects");
+
   const [projects, quality, closeMixRaw, team] = await Promise.all([
     getProjects(), getProjectQuality(), getCloseMix(), getTeamActivity(),
   ]);

@@ -1,5 +1,7 @@
 from fastapi import FastAPI
+from fastapi.responses import PlainTextResponse
 
+from .config import settings
 from .gates import run_constitution
 from .routers import checkout
 
@@ -16,6 +18,16 @@ def health():
 def constitution_check():
     """Run the constitution gate against the pinned standard."""
     return run_constitution()
+
+
+@app.get("/constitution/raw", response_class=PlainTextResponse)
+def constitution_raw():
+    """The pinned constitution markdown (read-only — the standard the app renders)."""
+    try:
+        with open(settings.constitution_path, encoding="utf-8") as fh:
+            return fh.read()
+    except OSError:
+        return PlainTextResponse("Constitution not found", status_code=404)
 
 
 # Mount the remote MCP server (streamable HTTP) for BYO agents. Mounted

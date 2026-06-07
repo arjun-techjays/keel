@@ -86,6 +86,16 @@ export async function getSessionUserId() {
   return user?.id ?? null;
 }
 
+export async function getMyRole() {
+  const sb = await createClient();
+  const {
+    data: { user },
+  } = await sb.auth.getUser();
+  if (!user) return null;
+  const { data } = await sb.from("profiles").select("role").eq("id", user.id).maybeSingle();
+  return data?.role ?? null;
+}
+
 export async function getProjectQuality() {
   const sb = await createClient();
   const { data } = await sb.from("v_project_quality").select("*");
@@ -101,5 +111,15 @@ export async function getCloseMix() {
 export async function getTeamActivity() {
   const sb = await createClient();
   const { data } = await sb.from("v_team_activity").select("*");
+  return data ?? [];
+}
+
+export async function getActivity() {
+  const sb = await createClient();
+  const { data } = await sb
+    .from("activity")
+    .select("id,action,target,meta,created_at, actor:profiles(full_name,initials), project:projects(name)")
+    .order("created_at", { ascending: false })
+    .limit(100);
   return data ?? [];
 }

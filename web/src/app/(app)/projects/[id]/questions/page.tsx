@@ -31,7 +31,7 @@ export default async function QuestionsPage({ params }: { params: Promise<{ id: 
   const [p, methodsRaw] = await Promise.all([getProject(id), getMethods(id)]);
   if (!p) return <div className="p-8 text-muted-ink">Project not found.</div>;
 
-  const methods = (methodsRaw as Method[]).map((m) => ({
+  const methods = (methodsRaw as unknown as Method[]).map((m) => ({
     ...m,
     questions: [...(m.questions ?? [])].sort((a, b) => a.q_id.localeCompare(b.q_id)),
   }));

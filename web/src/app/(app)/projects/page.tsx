@@ -1,8 +1,15 @@
 import Link from "next/link";
-import { Search, Plus, ChevronRight } from "lucide-react";
+import { Search, ChevronRight, FolderKanban } from "lucide-react";
 import { getProjects } from "@/lib/queries";
 import { FreezeBadge } from "@/components/keel/freeze-badge";
 import { AvatarChip } from "@/components/keel/avatar-chip";
+import { NewProjectButton } from "@/components/keel/new-project-button";
+
+type LockRow = {
+  status: string;
+  phase: string | null;
+  holder: { full_name: string | null; initials: string | null } | null;
+};
 
 export default async function ProjectsPage() {
   const projects = await getProjects();
@@ -24,14 +31,23 @@ export default async function ProjectsPage() {
             <Search className="h-4 w-4 text-faint" strokeWidth={2} />
             <span className="text-[13px] text-faint">Search projects</span>
           </div>
-          <button className="flex items-center gap-2 rounded-[9px] bg-cobalt px-4 py-2.5 text-[13px] font-semibold text-white">
-            <Plus className="h-4 w-4" strokeWidth={2.5} />
-            New project
-          </button>
+          <NewProjectButton />
         </div>
       </div>
 
       <div className="px-8 py-7">
+        {projects.length === 0 ? (
+          <div className="flex flex-col items-center gap-3 rounded-[14px] border border-dashed border-hairline bg-white px-8 py-20 text-center">
+            <FolderKanban className="h-8 w-8 text-faint" strokeWidth={1.75} />
+            <div className="flex flex-col gap-1">
+              <span className="font-display text-[17px] font-semibold text-ink">No projects yet</span>
+              <span className="text-[13px] text-muted-ink">Create your first engagement to start discovery.</span>
+            </div>
+            <div className="pt-2">
+              <NewProjectButton />
+            </div>
+          </div>
+        ) : (
         <div className="overflow-hidden rounded-[14px] border border-hairline bg-white">
           <div className="flex items-center gap-4 border-b border-hairline bg-panel px-5 py-3">
             <span className="flex-1 text-[11px] font-semibold uppercase tracking-[0.06em] text-faint">Project</span>
@@ -44,9 +60,9 @@ export default async function ProjectsPage() {
           </div>
 
           {projects.map((p, i) => {
-            const lock = Array.isArray(p.locks)
-              ? p.locks.find((l: { status: string }) => l.status === "held")
-              : null;
+            const lock = (p.locks as unknown as LockRow[] | null)?.find(
+              (l) => l.status === "held",
+            );
             return (
               <Link
                 key={p.id}
@@ -109,6 +125,7 @@ export default async function ProjectsPage() {
             );
           })}
         </div>
+        )}
       </div>
     </div>
   );

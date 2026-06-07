@@ -7,6 +7,7 @@ import {
   LayoutDashboard,
   ScrollText,
   Activity,
+  BookOpen,
   LogOut,
 } from "lucide-react";
 import { Wordmark } from "./wordmark";
@@ -15,19 +16,23 @@ import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 
 const NAV = [
-  { href: "/projects", label: "Projects", icon: FolderKanban },
-  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/constitution", label: "Constitution", icon: ScrollText },
-  { href: "/activity", label: "Activity", icon: Activity },
+  { href: "/projects", label: "Projects", icon: FolderKanban, adminOnly: false },
+  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard, adminOnly: true },
+  { href: "/constitution", label: "Constitution", icon: ScrollText, adminOnly: false },
+  { href: "/activity", label: "Activity", icon: Activity, adminOnly: false },
+  { href: "/guide", label: "Guide", icon: BookOpen, adminOnly: false },
 ];
 
 export function AppSidebar({
   user,
+  isAdmin,
 }: {
   user: { name: string; email: string; initials: string };
+  isAdmin: boolean;
 }) {
   const pathname = usePathname();
   const router = useRouter();
+  const nav = NAV.filter((item) => !item.adminOnly || isAdmin);
 
   async function signOut() {
     await createClient().auth.signOut();
@@ -45,7 +50,7 @@ export function AppSidebar({
         <span className="px-2 pb-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-faint">
           Workspace
         </span>
-        {NAV.map((item) => {
+        {nav.map((item) => {
           const active = pathname.startsWith(item.href);
           const Icon = item.icon;
           return (
