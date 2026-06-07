@@ -71,22 +71,32 @@ export default async function WorkspacePage({ params }: { params: Promise<{ id: 
   const openQ = questions.filter((q) => ["unanswered", "partial"].includes(q.disposition)).length;
   const fl = freezeLabel[p.freeze_status] ?? freezeLabel.draft;
 
+  // Phase states derived from real signals: a dimension means it's been mapped,
+  // open questions mean clarify is in progress, a review run means review ran.
+  const hasMapped = dims.length > 0 || p.total_dims > 0;
+  const hasReview = !!review;
+  const block = p.block_count;
+
   const phases: Phase[] = [
-    { key: "map", name: "Map", state: "done", meta: "Scored" },
+    {
+      key: "map", name: "Map",
+      state: hasMapped ? "done" : "active",
+      meta: hasMapped ? `Scored · ${p.total_dims || dims.length} dims` : "Run keel-map",
+    },
     {
       key: "clarify", name: "Clarify",
-      state: openQ > 0 ? "active" : "done",
-      meta: openQ > 0 ? `${openQ} open` : "Done",
+      state: !hasMapped ? "pending" : openQ > 0 ? "active" : "done",
+      meta: !hasMapped ? "Not started" : openQ > 0 ? `${openQ} open` : "Done",
     },
     {
       key: "generate", name: "Generate",
-      state: p.block_count > 0 ? "blocked" : "pending",
-      meta: p.block_count > 0 ? "Blocked · [BLOCK]>0" : "Ready",
+      state: block > 0 ? "blocked" : hasReview ? "done" : hasMapped && openQ === 0 ? "active" : "pending",
+      meta: block > 0 ? "Blocked · [BLOCK]>0" : hasReview ? "Generated" : hasMapped && openQ === 0 ? "Ready" : "Not started",
     },
     {
       key: "review", name: "Review",
-      state: review ? "done" : "pending",
-      meta: review ? review.run.verdict : "Not started",
+      state: hasReview ? "done" : "pending",
+      meta: hasReview ? review.run.verdict : "Not started",
     },
   ];
 
