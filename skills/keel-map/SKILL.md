@@ -9,7 +9,7 @@ The entry point of the kit. It does **not** write the deliverable documents — 
 
 ## Precondition — a linked project
 
-Keel state is shared and server-gated; a working folder must first be **linked to an engagement** on the platform. Check for `.keel/project.json`. **If it is missing, STOP and run `/keel-connect` first** — that selects the project from the platform, writes the binding, and pulls any existing progress into this folder so you score against shared state, not a blank or stale copy. If it is present, note the linked project (`name`) in your summary and continue. (Creating a project is web-app-only; `keel-connect` only selects an existing one.)
+Keel state is shared and server-gated; a working folder must first be **linked to an engagement**. Check for `.keel/project.json`. **If it is missing, STOP and run `/keel-connect` first** (a one-time link; creation stays web-app-only). To work against current shared state — and to lock the project so no one edits in parallel — **run `/keel-pull` at the start of the session**; it acquires the lock and downloads the latest snapshot. If the binding is present, note the linked project (`name`) in your summary and continue.
 
 ## The standard it scores against
 

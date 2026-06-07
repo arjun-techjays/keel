@@ -9,7 +9,7 @@ The adversary in the loop. Everything upstream tried to make the pack complete a
 
 ## Precondition — a linked project
 
-This folder must be **linked to an engagement** before review runs. Check for `.keel/project.json`. **If it is missing, STOP and run `/keel-connect` first** — it selects the project and pulls the pack you're about to red-team. If present, continue.
+This folder must be **linked to an engagement** before review runs. Check for `.keel/project.json`. **If it is missing, STOP and run `/keel-connect` first** (one-time link). Start the session with **`/keel-pull`** to lock the project and download the latest pack you're about to red-team. If the binding is present, continue.
 
 ## The standard
 

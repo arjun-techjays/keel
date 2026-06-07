@@ -11,7 +11,7 @@ Turns the resolved engagement into the deliverable. It does not decide anything 
 
 ## Precondition — a linked project
 
-This folder must be **linked to an engagement** before generate runs. Check for `.keel/project.json`. **If it is missing, STOP and run `/keel-connect` first** — it selects the project and pulls the shared state (`coverage-map.md` + `decision-log.md`, which this skill renders from). If present, continue. (Generation stays local; the pack becomes shared, gated state only when you run `/keel-push`.)
+This folder must be **linked to an engagement** before generate runs. Check for `.keel/project.json`. **If it is missing, STOP and run `/keel-connect` first** (one-time link). Start the session with **`/keel-pull`** to lock the project and download the latest shared state (`coverage-map.md` + `decision-log.md`, which this skill renders from). If the binding is present, continue. (Generation stays local; the pack becomes shared, gated state only when you run `/keel-push`.)
 
 ## Where files live
 

@@ -9,7 +9,7 @@ The loop between `keel-map` and `keel-generate`. It takes the open questions `ke
 
 ## Precondition — a linked project
 
-This folder must be **linked to an engagement** before clarify runs. Check for `.keel/project.json`. **If it is missing, STOP and run `/keel-connect` first** — it selects the project, writes the binding, and pulls the shared state (the open-questions register you're about to reconcile lives in that pulled state). If present, continue.
+This folder must be **linked to an engagement** before clarify runs. Check for `.keel/project.json`. **If it is missing, STOP and run `/keel-connect` first** (one-time link). Start the session with **`/keel-pull`** to lock the project and download the latest shared state — the open-questions register you're about to reconcile lives in that pulled state. If the binding is present, continue.
 
 ## The standard it enforces
 

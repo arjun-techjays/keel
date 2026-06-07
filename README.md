@@ -42,16 +42,17 @@ Run in order; each hands off to the next **through files** — skills never call
 
 > These install flat, so they invoke as `/keel-map`, `/keel-clarify`, etc.
 
-### Two more skills for the shared platform (checkout bookends)
+### Three more skills for the shared platform (git-like checkout)
 
-When you run against Keel's hosted, shared state over the remote MCP server (rather than purely local files), two checkout skills wrap the four above — git-like pull/push:
+When you run against Keel's hosted, shared state over the remote MCP server (rather than purely local files), three checkout skills wrap the four above:
 
 | Invoke | What it does | Its gate |
 |---|---|---|
-| `/keel-connect` | **Run first.** Lists the engagements you can edit, links this folder to the one you pick (`.keel/project.json`), acquires the whole-project lock, and pulls the latest shared snapshot so you continue from team state. Projects are created in the web app; this only selects one. | The four skills above refuse to run until a project is linked. |
-| `/keel-push` | **Run last.** Zips `.keel/ discovery/ deliverables/`, uploads via MCP, runs the **real server-side gate** (generate, then review), updates the shared dashboards, and releases your lock. | A red gate is reported; fix upstream and push again. |
+| `/keel-connect` | **Once per folder.** Lists the engagements you can edit and links this folder to the one you pick (`.keel/project.json`); shows where the project stands. Does **not** lock or download. Projects are created in the web app; this only selects one. | The four skills above refuse to run until a project is linked. |
+| `/keel-pull` | **Start of every session.** Checks the project out: acquires the whole-project lock (everyone else view-only) and downloads the latest snapshot. Returning later → just `/keel-pull` again, no re-connect. | `409` if someone else holds the lock — only one mutator at a time. |
+| `/keel-push` | **End of session.** Zips `.keel/ discovery/ deliverables/`, uploads via MCP, runs the **real server-side gate** (generate, then review), updates the shared dashboards, and **releases the lock**. | A red gate is reported; fix upstream and push again. |
 
-Full setup and a fresh-project-to-PDF walkthrough live in the in-app **Guide → §6 (Using Keel from Claude Code or Codex)**. For local-only use (no platform), skip these two and run the four skills directly on local files.
+The lock is held from `/keel-pull` to `/keel-push` (or a manual release / ~15-min idle auto-free) — that's the whole-project, single-mutator model. Full setup and a fresh-project-to-PDF walkthrough live in the in-app **Guide → §6 (Using Keel from Claude Code or Codex)**. For local-only use (no platform), skip these three and run the four skills directly on local files.
 
 ### The six deliverable documents (Part F)
 

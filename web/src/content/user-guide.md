@@ -114,7 +114,7 @@ cp keel/constitution.md .          # the standard the skills score against
 cp -r keel/checks .                # the mechanical gate scripts (stdlib python3)
 ```
 
-In a Claude Code session, run `/mcp` to confirm `keel` is connected, and the skills `/keel-connect`, `/keel-map`, `/keel-clarify`, `/keel-generate`, `/keel-review`, `/keel-push` should appear. Without a valid token every Keel tool returns `401` — generate one in the web app first.
+In a Claude Code session, run `/mcp` to confirm `keel` is connected, and the skills `/keel-connect`, `/keel-pull`, `/keel-map`, `/keel-clarify`, `/keel-generate`, `/keel-review`, `/keel-push` should appear. Without a valid token every Keel tool returns `401` — generate one in the web app first.
 
 ### 6b. One-time setup — Codex
 
@@ -136,41 +136,49 @@ Install the skills/constitution/checks the same way as above, then restart Codex
 mkdir northwind && cd northwind
 #    add notes, transcripts, RFP, emails, spreadsheets … anything you have
 
-# 1. CONNECT — link this folder to the project and pull any existing progress
+# 1. CONNECT — link this folder to the project (ONE TIME, no lock)
 /keel-connect
-#    lists the projects you can edit → you pick one → writes .keel/project.json,
-#    acquires the working lock, and downloads the latest snapshot into this folder.
-#    (For a brand-new engagement there's nothing to download yet — that's fine.)
-#    This is the gate: /keel-map and the rest refuse to run until a project is linked.
+#    lists the projects you can edit → you pick one → writes .keel/project.json
+#    and shows where the project stands. It does NOT lock or download files.
+#    You only ever do this once per folder. This is the gate: /keel-map and the
+#    rest refuse to run until a project is linked.
 
-# 2. MAP — score what you have against the constitution
+# 2. PULL — check out: lock the project + download the latest state
+/keel-pull
+#    acquires the WHOLE-PROJECT lock (everyone else is now view-only — this is how
+#    you stop parallel edits) and downloads the latest snapshot into the folder.
+#    Run this at the START of EVERY work session — including when you return later.
+#    Locked by someone else? You wait — only one person holds it at a time.
+#    (Brand-new engagement → nothing to download yet, that's fine.)
+
+# 3. MAP — score what you have against the constitution
 /keel-map
 #    writes: .keel/coverage-map.md, discovery/open-questions.md, discovery/discovery-plan.md
 #    the plan groups questions by research method (interview, document review, …)
 
-# 3. CLARIFY — close the open questions
+# 4. CLARIFY — close the open questions
 /keel-clarify
 #    answer one-by-one in the terminal, or drop answer files into discovery/answers/
 #    for anything you can't answer, disposition it: assumption / exclusion / defer (T&M)
 
-# 4. LOOP 1 — re-map to re-score, repeat until no blockers
+# 5. LOOP 1 — re-map to re-score, repeat until no blockers
 /keel-map
 #    keep going /keel-clarify → /keel-map until open-questions shows [BLOCK] = 0
 
-# 5. GENERATE — render the six-document pack (only works at [BLOCK] = 0)
+# 6. GENERATE — render the six-document pack (only works at [BLOCK] = 0)
 /keel-generate
 #    writes deliverables/1-executive-summary.md … 6-approval-and-signoff.md
 
-# 6. REVIEW — red-team the pack for scope risk
+# 7. REVIEW — red-team the pack for scope risk
 /keel-review
 #    writes deliverables/scope-risk-report.md with findings + a freeze verdict
 
-# 7. LOOP 2 — findings go back to clarify, then regenerate + re-review
+# 8. LOOP 2 — findings go back to clarify, then regenerate + re-review
 /keel-clarify        # resolve the findings
 /keel-generate       # re-render
 /keel-review         # until 0 High findings + full coverage
 
-# 8. PUSH — send the result to the shared platform (runs the server gate)
+# 9. PUSH — send the result to the shared platform (runs the server gate, releases lock)
 /keel-push
 #    zips .keel/ discovery/ deliverables/, uploads via MCP, runs the REAL server
 #    gate (generate, then review), updates the shared dashboards, and releases
@@ -178,15 +186,21 @@ mkdir northwind && cd northwind
 #    /keel-push again. (You can still push from the web app instead: Overview →
 #    Pull & lock → upload zip → Push → Release.)
 
-# 9. FREEZE + PDF — make the Recommended decisions, get sign-off, export
+# 10. FREEZE + PDF — make the Recommended decisions, get sign-off, export
 #    Pack tab → Export PDF  (your browser's Save as PDF produces the client PDF)
 ```
 
-> Tip: steps 1–8 happen entirely in your agent. You only need the web app to *create* the project (step 0), make the Recommended decisions, view the team dashboards, and export the final PDF.
+**The three checkout verbs — the rhythm to remember:**
 
-> **The lock travels with checkout.** `/keel-connect` acquires the whole-project lock (everyone else is view-only); `/keel-push` releases it. If you stop mid-session without pushing, release manually (the `keel_release` tool) or let it auto-free after ~15 min idle so you don't block teammates.
+- **`/keel-connect` — once per folder.** Records *which* project this folder is. No lock.
+- **`/keel-pull` — every session.** Checks the project out: takes the lock (others view-only) and pulls the latest. Returning tomorrow? Just `/keel-pull` again — you don't re-connect.
+- **`/keel-push` — end of session.** Runs the gate and releases the lock so the next person can pull.
 
-> **POC note:** `/keel-connect` pulls and `/keel-push` runs the gate exactly as the web checkout does — they share the same server logic. Per-user attribution of agent actions in Activity is still on the roadmap; web actions are already attributed.
+> Tip: steps 2–9 happen entirely in your agent. You only need the web app to *create* the project (step 0), make the Recommended decisions, view the team dashboards, and export the final PDF.
+
+> **When is it locked?** From `/keel-pull` until `/keel-push` (or `keel_release`, or a ~15-min idle auto-free). While you hold it, everyone else is view-only — that's how parallel editing is prevented. If you stop mid-session without pushing, release so you don't block teammates.
+
+> **POC note:** `/keel-pull` and `/keel-push` use the same server logic as the web app's *Pull & lock* / *Push* / *Release* buttons. There's no automatic lease heartbeat over MCP yet, so a long idle session can lose its lock (~15 min) — if a later `/keel-push` returns `409`, just `/keel-pull` again and push. Per-user attribution of agent actions in Activity is also still on the roadmap; web actions are already attributed.
 
 ---
 
