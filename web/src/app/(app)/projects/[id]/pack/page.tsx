@@ -1,7 +1,8 @@
-import { Download, TriangleAlert } from "lucide-react";
+import { TriangleAlert } from "lucide-react";
 import { getProject } from "@/lib/queries";
 import { packDocs } from "@/lib/mock";
 import { ProjectHeader } from "@/components/keel/project-header";
+import { PrintButton } from "@/components/keel/print-button";
 
 export default async function PackPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -14,15 +15,11 @@ export default async function PackPage({ params }: { params: Promise<{ id: strin
     <div className="flex min-h-full flex-col">
       <ProjectHeader
         id={id} name={p.name} version="const. v4.2" active="pack"
-        action={
-          <button className="flex items-center gap-2 rounded-[9px] border border-hairline bg-white px-3.5 py-2.5 text-[13px] font-semibold text-muted-ink">
-            <Download className="h-[15px] w-[15px]" strokeWidth={2} /> Export PDF
-          </button>
-        }
+        action={<PrintButton />}
       />
 
       <div className="flex flex-1 items-stretch gap-6 px-8 py-6">
-        <div className="flex w-[280px] shrink-0 flex-col overflow-hidden rounded-[14px] border border-hairline bg-white">
+        <div data-print-hide className="flex w-[280px] shrink-0 flex-col overflow-hidden rounded-[14px] border border-hairline bg-white">
           <div className="border-b border-hairline px-4 py-3">
             <span className="text-[11px] font-semibold uppercase tracking-[0.06em] text-faint">Deliverable pack</span>
           </div>

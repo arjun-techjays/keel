@@ -10,7 +10,6 @@ export function Markdown({ content }: { content: string }) {
         prose-headings:font-display prose-headings:tracking-[-0.01em] prose-headings:text-ink
         prose-p:text-muted-ink prose-li:text-muted-ink
         prose-strong:text-ink prose-a:text-cobalt
-        prose-code:font-mono prose-code:text-ink prose-code:before:content-[''] prose-code:after:content-['']
         prose-table:text-[12.5px] prose-th:text-ink prose-td:text-muted-ink
         prose-hr:border-hairline"
     >

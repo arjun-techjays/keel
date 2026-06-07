@@ -1,6 +1,6 @@
 import {
   Users, Presentation, FileText, MessagesSquare, Gauge,
-  Upload, ChevronDown, ChevronRight, Plus, Check, Pencil,
+  Upload, ChevronDown, Plus, Check,
 } from "lucide-react";
 import { getProject, getMethods } from "@/lib/queries";
 import { ProjectHeader } from "@/components/keel/project-header";
@@ -102,35 +102,10 @@ export default async function QuestionsPage({ params }: { params: Promise<{ id: 
                 </p>
               </div>
 
-              <div className="flex flex-col gap-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-[11px] font-semibold uppercase tracking-[0.06em] text-faint">Answer</span>
-                  <div className="flex items-center gap-1 rounded-lg border border-hairline bg-white p-0.5">
-                    <span className="flex items-center gap-1.5 rounded-md bg-cobalt-tint px-2.5 py-1 text-xs font-semibold text-cobalt">
-                      <Pencil className="h-3.5 w-3.5" strokeWidth={2} /> Type
-                    </span>
-                    <span className="flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-semibold text-muted-ink">
-                      <Upload className="h-3.5 w-3.5" strokeWidth={2} /> Upload file
-                    </span>
-                  </div>
-                </div>
-                <div className="min-h-[110px] rounded-[10px] border border-hairline px-4 py-3 text-[13px] leading-[20px] text-faint">
-                  Type the answer from discovery, or switch to <span className="font-semibold">Upload file</span> to
-                  drop interview notes and let Keel extract answers across this method.
-                </div>
-              </div>
-
-              <div className="flex items-center justify-between gap-3">
-                <div className="flex items-center gap-2">
-                  <button className="shrink-0 whitespace-nowrap rounded-[9px] bg-cobalt px-4 py-2.5 text-[13px] font-semibold text-white">Save answer</button>
-                  <span className="shrink-0 px-1 text-xs text-faint">or</span>
-                  {["Assumption", "Defer · T&M", "Exclude"].map((d) => (
-                    <button key={d} className="shrink-0 whitespace-nowrap rounded-[9px] border border-hairline bg-white px-3 py-2.5 text-[13px] font-semibold text-muted-ink hover:bg-panel">{d}</button>
-                  ))}
-                </div>
-                <button className="flex shrink-0 items-center gap-1 whitespace-nowrap text-[13px] font-medium text-faint hover:text-muted-ink">
-                  Next open <ChevronRight className="h-4 w-4" strokeWidth={2} />
-                </button>
+              <div className="rounded-[10px] border border-dashed border-hairline bg-panel px-4 py-3.5 text-[13px] leading-[19px] text-muted-ink">
+                Answers are recorded by your agent during <span className="font-semibold text-ink">Clarify</span>, or
+                by pushing updated discovery files from the <span className="font-semibold text-ink">Overview</span> tab.
+                See the <span className="font-semibold text-ink">Guide</span> for the full flow.
               </div>
             </div>
           </div>

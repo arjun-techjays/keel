@@ -24,7 +24,7 @@ export function ProjectHeader({
   action?: React.ReactNode;
 }) {
   return (
-    <div className="flex flex-col gap-4 px-8 pt-[22px]">
+    <div data-print-hide className="flex flex-col gap-4 px-8 pt-[22px]">
       <div className="flex items-center justify-between">
         <div className="flex flex-col gap-[7px]">
           <div className="flex items-center gap-[7px]">
