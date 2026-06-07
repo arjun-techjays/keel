@@ -7,6 +7,10 @@ description: "Audit raw discovery inputs — a one-line idea, a brief, PDFs, Wor
 
 The entry point of the kit. It does **not** write the deliverable documents — it tells you, against a fixed standard, exactly what is known, what is vague, what is missing, and how to find the rest. Everything it emits is the input to `keel-clarify`, `keel-generate`, and `keel-review`. (Skills don't call each other; they hand off through the files this one writes.)
 
+## Precondition — a linked project
+
+Keel state is shared and server-gated; a working folder must first be **linked to an engagement** on the platform. Check for `.keel/project.json`. **If it is missing, STOP and run `/keel-connect` first** — that selects the project from the platform, writes the binding, and pulls any existing progress into this folder so you score against shared state, not a blank or stale copy. If it is present, note the linked project (`name`) in your summary and continue. (Creating a project is web-app-only; `keel-connect` only selects an existing one.)
+
 ## The standard it scores against
 
 Read **`constitution.md`** *before doing anything else*. Look for it at the project root first, then the Keel kit root. It defines the Doctrine (the laws), the Project Profile (the axes that drive applicability), and the Dimension Catalog (what must be decided, per discipline). This skill never invents dimensions — it scores the catalog. The law references below (Law 7, Law 9, etc.) point at Part A of the constitution.

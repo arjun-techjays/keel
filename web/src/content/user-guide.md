@@ -99,18 +99,22 @@ This is the power workflow: generation runs in **your** Claude Code/Codex (your 
 ### 6a. One-time setup — Claude Code
 
 ```bash
-# 1. Connect Keel's remote MCP server
-claude mcp add keel --transport http https://keel-production-729b.up.railway.app/mcp
+# 1. Generate a personal access token: web app → Settings (or the Connect-agent
+#    panel on a project) → Generate token. Copy it — it's shown once.
 
-# 2. Install the Keel skills into your project
-#    (clone the repo once, then copy the four skill folders)
+# 2. Connect Keel's remote MCP server (the token authenticates every call)
+claude mcp add keel --transport http https://keel-production-729b.up.railway.app/mcp \
+  --header "Authorization: Bearer keel_pat_xxxxxxxx"
+
+# 3. Install the Keel skills into your project
+#    (clone the repo once, then copy the skill folders)
 git clone https://github.com/arjun-techjays/keel.git
 cp -r keel/skills/keel-* .claude/skills/
 cp keel/constitution.md .          # the standard the skills score against
 cp -r keel/checks .                # the mechanical gate scripts (stdlib python3)
 ```
 
-In a Claude Code session, run `/mcp` to confirm `keel` is connected, and the skills `/keel-map`, `/keel-clarify`, `/keel-generate`, `/keel-review` should appear.
+In a Claude Code session, run `/mcp` to confirm `keel` is connected, and the skills `/keel-connect`, `/keel-map`, `/keel-clarify`, `/keel-generate`, `/keel-review`, `/keel-push` should appear. Without a valid token every Keel tool returns `401` — generate one in the web app first.
 
 ### 6b. One-time setup — Codex
 
@@ -126,50 +130,63 @@ Install the skills/constitution/checks the same way as above, then restart Codex
 ### 6c. Full walkthrough — a fresh project to a signed PDF
 
 ```bash
-# 0. Create the project in the web app (New project) — note its name.
-#    Then start a working folder and drop in the client's materials:
+# 0. Create the project in the web app (New project). Creation is web-app-only —
+#    it pins the project to the active constitution. Then start a working folder
+#    and drop in the client's materials:
 mkdir northwind && cd northwind
 #    add notes, transcripts, RFP, emails, spreadsheets … anything you have
 
-# 1. MAP — score what you have against the constitution
+# 1. CONNECT — link this folder to the project and pull any existing progress
+/keel-connect
+#    lists the projects you can edit → you pick one → writes .keel/project.json,
+#    acquires the working lock, and downloads the latest snapshot into this folder.
+#    (For a brand-new engagement there's nothing to download yet — that's fine.)
+#    This is the gate: /keel-map and the rest refuse to run until a project is linked.
+
+# 2. MAP — score what you have against the constitution
 /keel-map
 #    writes: .keel/coverage-map.md, discovery/open-questions.md, discovery/discovery-plan.md
 #    the plan groups questions by research method (interview, document review, …)
 
-# 2. CLARIFY — close the open questions
+# 3. CLARIFY — close the open questions
 /keel-clarify
 #    answer one-by-one in the terminal, or drop answer files into discovery/answers/
 #    for anything you can't answer, disposition it: assumption / exclusion / defer (T&M)
 
-# 3. LOOP 1 — re-map to re-score, repeat until no blockers
+# 4. LOOP 1 — re-map to re-score, repeat until no blockers
 /keel-map
 #    keep going /keel-clarify → /keel-map until open-questions shows [BLOCK] = 0
 
-# 4. GENERATE — render the six-document pack (only works at [BLOCK] = 0)
+# 5. GENERATE — render the six-document pack (only works at [BLOCK] = 0)
 /keel-generate
 #    writes deliverables/1-executive-summary.md … 6-approval-and-signoff.md
 
-# 5. REVIEW — red-team the pack for scope risk
+# 6. REVIEW — red-team the pack for scope risk
 /keel-review
 #    writes deliverables/scope-risk-report.md with findings + a freeze verdict
 
-# 6. LOOP 2 — findings go back to clarify, then regenerate + re-review
+# 7. LOOP 2 — findings go back to clarify, then regenerate + re-review
 /keel-clarify        # resolve the findings
 /keel-generate       # re-render
 /keel-review         # until 0 High findings + full coverage
 
-# 7. PUSH — send the result to the shared platform (runs the server gate)
-zip -r northwind.zip .keel discovery deliverables
-#    in the web app: open the project → Overview → Pull & lock →
-#    Upload & push (phase: generate, then again phase: review) → Release
+# 8. PUSH — send the result to the shared platform (runs the server gate)
+/keel-push
+#    zips .keel/ discovery/ deliverables/, uploads via MCP, runs the REAL server
+#    gate (generate, then review), updates the shared dashboards, and releases
+#    your lock. A red gate is reported here — fix upstream (clarify→generate) and
+#    /keel-push again. (You can still push from the web app instead: Overview →
+#    Pull & lock → upload zip → Push → Release.)
 
-# 8. FREEZE + PDF — make the Recommended decisions, get sign-off, export
+# 9. FREEZE + PDF — make the Recommended decisions, get sign-off, export
 #    Pack tab → Export PDF  (your browser's Save as PDF produces the client PDF)
 ```
 
-> Tip: you can do steps 1–6 entirely in your agent, then only use the web app for the push, the team-visible dashboards, and the final PDF.
+> Tip: steps 1–8 happen entirely in your agent. You only need the web app to *create* the project (step 0), make the Recommended decisions, view the team dashboards, and export the final PDF.
 
-> **POC note:** the MCP connection isn't per-user authenticated yet, so agent actions aren't attributed to a person in Activity. Web actions (pull/push/release) *are* attributed. Per-user MCP auth is on the roadmap.
+> **The lock travels with checkout.** `/keel-connect` acquires the whole-project lock (everyone else is view-only); `/keel-push` releases it. If you stop mid-session without pushing, release manually (the `keel_release` tool) or let it auto-free after ~15 min idle so you don't block teammates.
+
+> **POC note:** `/keel-connect` pulls and `/keel-push` runs the gate exactly as the web checkout does — they share the same server logic. Per-user attribution of agent actions in Activity is still on the roadmap; web actions are already attributed.
 
 ---
 

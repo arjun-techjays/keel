@@ -7,6 +7,10 @@ description: "Run AFTER keel-map, once answers start coming in. Ingest a round o
 
 The loop between `keel-map` and `keel-generate`. It takes the open questions `keel-map` produced and the answers the project lead gathers — pasted in, dropped as files, or **typed straight into the terminal** — and it closes the gap, literally. Each pass either turns questions into resolved knowledge or into an explicit, recorded decision. Nothing is allowed to quietly evaporate.
 
+## Precondition — a linked project
+
+This folder must be **linked to an engagement** before clarify runs. Check for `.keel/project.json`. **If it is missing, STOP and run `/keel-connect` first** — it selects the project, writes the binding, and pulls the shared state (the open-questions register you're about to reconcile lives in that pulled state). If present, continue.
+
 ## The standard it enforces
 
 Read **`constitution.md`** first (project root, then kit root). Clarify lives and dies by three laws: **Law 5** (every gap is dispositioned, never left open), **Law 6** (everything traces to a source), and **Law 7** (conflicts are surfaced and resolved on the record, never silently).

@@ -9,6 +9,10 @@ Turns the resolved engagement into the deliverable. It does not decide anything 
 
 **The six docs are derived artifacts, not source.** They are re-rendered from `.keel/` state (`coverage-map.md` + `decision-log.md`) on every run — so a hand-edit to a file in `deliverables/` is **overwritten** the next time this runs. Any correction (including a `keel-review` fix) belongs **upstream** — in `.keel/decision-log.md`, `discovery/open-questions.md`, or a fresh discovery round — and then re-generates into the docs. The only thing that ends edits is *freeze* (after which changes are change-control, not regeneration).
 
+## Precondition — a linked project
+
+This folder must be **linked to an engagement** before generate runs. Check for `.keel/project.json`. **If it is missing, STOP and run `/keel-connect` first** — it selects the project and pulls the shared state (`coverage-map.md` + `decision-log.md`, which this skill renders from). If present, continue. (Generation stays local; the pack becomes shared, gated state only when you run `/keel-push`.)
+
 ## Where files live
 
 - Reads: `discovery/open-questions.md` (gate check), `.keel/coverage-map.md` (re-scored), `.keel/decision-log.md`, and the evidence corpus.

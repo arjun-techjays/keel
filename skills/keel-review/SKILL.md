@@ -7,6 +7,10 @@ description: "The last gate before freeze. Reads ALL SIX finished discovery docu
 
 The adversary in the loop. Everything upstream tried to make the pack complete and precise; `keel-review` assumes that failed *somewhere* and goes looking for it — specifically for any wording a client could use to expand scope or dispute "done" after the price is fixed. It is the difference between *consistent* (which `keel-generate`'s sub-gates prove) and *unexploitable* (which only a hostile reading finds). Its job is to make the pack **definitive**: no decision implied, no expectation un-bound, no "done" arguable.
 
+## Precondition — a linked project
+
+This folder must be **linked to an engagement** before review runs. Check for `.keel/project.json`. **If it is missing, STOP and run `/keel-connect` first** — it selects the project and pulls the pack you're about to red-team. If present, continue.
+
 ## The standard
 
 Read `constitution.md` (project root, then kit root). Two parts matter here:
