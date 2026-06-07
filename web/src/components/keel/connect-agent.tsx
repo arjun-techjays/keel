@@ -112,11 +112,10 @@ http_headers = { Authorization = "Bearer ${token}" }`;
                   <span className="text-[12px] text-muted-ink">
                     Replace <code className="font-mono text-ink">&lt;YOUR_TOKEN&gt;</code> with a token —
                   </span>
-                  <form action={formAction} className="flex items-center gap-2">
-                    <input name="name" placeholder="token name" className="w-36 rounded-[8px] border border-hairline px-2.5 py-1.5 text-[12px] text-ink outline-none focus:border-cobalt" />
+                  <form action={formAction}>
                     <button type="submit" disabled={pending} className="flex shrink-0 items-center gap-1.5 rounded-[8px] bg-cobalt px-3 py-1.5 text-[12px] font-semibold text-white disabled:opacity-60">
                       <KeyRound className="h-3.5 w-3.5" strokeWidth={2} />
-                      {pending ? "Generating…" : "Generate"}
+                      {pending ? "Generating…" : "Generate token"}
                     </button>
                   </form>
                   {existingTokenCount > 0 && (

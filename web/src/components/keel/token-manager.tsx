@@ -36,15 +36,11 @@ export function TokenManager({ tokens, mcpUrl }: { tokens: Token[]; mcpUrl: stri
     <div className="flex flex-col gap-6">
       {/* create */}
       <div className="rounded-[14px] border border-hairline bg-white p-6">
-        <form action={formAction} className="flex items-end gap-3">
-          <label className="flex flex-1 flex-col gap-1.5">
-            <span className="text-[12px] font-semibold text-ink">New access token</span>
-            <input
-              name="name"
-              placeholder="e.g. My laptop — Claude Code"
-              className="rounded-[9px] border border-hairline px-3 py-2.5 text-[14px] text-ink outline-none focus:border-cobalt"
-            />
-          </label>
+        <form action={formAction} className="flex items-center justify-between gap-3">
+          <div className="flex flex-col gap-0.5">
+            <span className="text-[13px] font-semibold text-ink">New access token</span>
+            <span className="text-[12px] text-muted-ink">Generate a token to connect Claude Code or Codex.</span>
+          </div>
           <button
             type="submit"
             disabled={pending}

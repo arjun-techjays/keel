@@ -8,7 +8,8 @@ export async function createToken(
   _prev: { token?: string; error?: string } | null,
   formData: FormData,
 ): Promise<{ token?: string; error?: string }> {
-  const name = (formData.get("name") as string)?.trim() || "Agent token";
+  const name =
+    (formData.get("name") as string)?.trim() || `Token · ${new Date().toISOString().slice(0, 10)}`;
   const supabase = await createClient();
   const {
     data: { user },
