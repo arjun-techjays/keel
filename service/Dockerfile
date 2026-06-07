@@ -14,4 +14,7 @@ ENV CHECKS_DIR=/app/checks \
     CONSTITUTION_PATH=/app/constitution.md \
     PORT=8000
 
-CMD ["sh", "-c", "uvicorn service.app.main:app --host 0.0.0.0 --port ${PORT:-8000}"]
+# --forwarded-allow-ips '*' so uvicorn trusts Railway's X-Forwarded-Proto and
+# emits https (not http) redirects — otherwise the /mcp -> /mcp/ redirect
+# downgrades scheme and MCP clients drop the Authorization header.
+CMD ["sh", "-c", "uvicorn service.app.main:app --host 0.0.0.0 --port ${PORT:-8000} --forwarded-allow-ips '*'"]

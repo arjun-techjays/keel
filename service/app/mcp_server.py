@@ -15,7 +15,9 @@ from . import checkout_core as core
 
 from mcp.server.fastmcp import FastMCP
 
-mcp = FastMCP("keel")
+# streamable_http_path="/" so that mounting the app at "/mcp" yields the public
+# endpoint at "/mcp" (with the default "/mcp" it would double to "/mcp/mcp").
+mcp = FastMCP("keel", streamable_http_path="/")
 
 
 def _uid() -> str | None:
