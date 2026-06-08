@@ -57,6 +57,19 @@ def constitution_raw():
         return PlainTextResponse("Constitution not found", status_code=404)
 
 
+@app.get("/projects/{project_id}/doc/{n}", response_class=PlainTextResponse)
+def project_doc(project_id: str, n: int):
+    """Stream deliverable #n's markdown from the latest snapshot, so the web Pack tab
+    can render the generated content (read-only; the snapshot is the source of truth).
+    404 when no snapshot has the doc (e.g. only a map was pushed)."""
+    from . import checkout_core as core
+
+    md = core.get_deliverable(project_id, n)
+    if md is None:
+        return PlainTextResponse("Not generated", status_code=404)
+    return md
+
+
 # Mount the remote MCP server (streamable HTTP) for BYO agents.
 if _mcp_app is not None:
     app.mount("/mcp", _mcp_app)

@@ -52,8 +52,8 @@ Every tab carries the project's tab bar (Overview · Questions · Coverage · Pa
 
 - **Overview** — this project's dashboard: freeze status, `[BLOCK]` count, coverage, the phase pipeline, coverage by discipline, and open questions. The **checkout controls** (Pull / Push / Release) live here.
 - **Questions (Clarify)** — open questions grouped by **discipline** (Scope, Data & Privacy, Security, …), each showing its status. Click a question to read it; closed items show a check. *Answering happens in your agent or via push* — this tab is the shared view of what's open and how it was closed.
-- **Coverage** — every dimension, scored **Covered / Partial / Gap**. **Click any dimension** to inspect it (its evidence, score, and any blocker) — not just the gaps.
-- **Pack** — the six rendered deliverables. The tab is **empty until you push a `generate`** (run `/keel-generate` first); after that it shows the pack with its **DRAFT / FROZEN** status and gate result. The rendered prose lives in your pulled snapshot (`deliverables/`); pull to read or print it. **Export PDF** prints via your browser's *Save as PDF*.
+- **Coverage** — every dimension, scored **Covered / Partial / Gap / N/A**. **Click any dimension** to inspect it (its evidence, score, and any blocker). **N/A** dimensions were *ruled out by the project's profile* (recorded decisions, e.g. "no AI → AI-accuracy N/A") — not gaps or skips; click one to see the reason. They're excluded from the coverage %.
+- **Pack** — the six rendered deliverables. The tab is **empty until you push a `generate`** (run `/keel-generate` first); after that it **renders the actual document content** (pulled live from the latest snapshot) with its **DRAFT / FROZEN** status and gate result. **Export PDF** prints via your browser's *Save as PDF*.
 - **Review** — the scope-risk findings and the freeze verdict.
 
 ### Dashboard (admins only)

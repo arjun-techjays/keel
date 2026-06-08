@@ -40,17 +40,19 @@ export default async function CoveragePage({
   const cov = dims.filter((d) => d.score === "covered").length;
   const par = dims.filter((d) => d.score === "partial").length;
   const gap = dims.filter((d) => d.score === "gap").length;
-  const total = dims.length || 1;
+  const na = dims.filter((d) => d.score === "na").length;
+  // Coverage is over APPLICABLE dimensions — N/A are excluded (ruled out by profile).
+  const total = cov + par + gap || 1;
 
   return (
     <div className="flex min-h-full flex-col">
       <ProjectHeader id={id} name={p.name} version="const. v4.2" active="coverage" />
 
-      <div className="px-8 pt-6">
+      <div className="flex flex-col gap-1.5 px-8 pt-6">
         <div className="flex items-center gap-6 rounded-[14px] border border-hairline bg-white px-6 py-4">
           <div className="flex items-baseline gap-1.5">
-            <span className="tnum font-mono text-2xl font-semibold text-ink">{dims.length}</span>
-            <span className="text-[13px] font-medium text-muted-ink">dimensions</span>
+            <span className="tnum font-mono text-2xl font-semibold text-ink">{total}</span>
+            <span className="text-[13px] font-medium text-muted-ink">applicable{na > 0 ? ` · ${na} N/A` : ""}</span>
           </div>
           <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-hairline-soft">
             <div className="flex h-full">
@@ -63,8 +65,14 @@ export default async function CoveragePage({
             <Tally n={String(cov)} label="Covered" color="var(--covered)" />
             <Tally n={String(par)} label="Partial" color="var(--partial)" />
             <Tally n={String(gap)} label="Gap" color="var(--gap)" />
+            {na > 0 && <Tally n={String(na)} label="N/A" color="#9aa1ac" />}
           </div>
         </div>
+        {na > 0 && (
+          <span className="px-1 text-[11px] text-faint">
+            N/A = ruled out by this project&apos;s profile (recorded decisions, not gaps) — excluded from coverage. Click one for the reason.
+          </span>
+        )}
       </div>
 
       <div className="flex flex-1 items-stretch gap-6 px-8 py-6">
@@ -114,11 +122,28 @@ export default async function CoveragePage({
             </div>
             <div className="flex flex-col gap-5 px-7 py-6">
               <Field label="Discipline">{disciplineName(selected.discipline_id)} · {selected.discipline_id}</Field>
-              <Field label="Current state">
+              <Field label={selected.score === "na" ? "Why it's not applicable" : "Current state"}>
                 {selected.evidence
                   ? selected.evidence
-                  : `Scored ${SCORE[selected.score as Score].label}. ${selected.score === "gap" ? "No artifact provided yet — resolve the linked blocker in Clarify." : "Evidence on file."}`}
+                  : `Scored ${SCORE[selected.score as Score].label}. ${
+                      selected.score === "gap"
+                        ? "No artifact provided yet — resolve the linked blocker in Clarify."
+                        : selected.score === "na"
+                          ? "Ruled out by this project's profile (a recorded decision, not a gap)."
+                          : "Evidence on file."
+                    }`}
               </Field>
+              {selected.score === "na" && (
+                <div className="flex items-start gap-2.5 rounded-[10px] border border-hairline bg-panel px-4 py-3.5">
+                  <span className="mt-0.5 h-2.5 w-2.5 shrink-0 rounded-sm" style={{ backgroundColor: "#9aa1ac" }} />
+                  <div className="flex flex-col gap-0.5">
+                    <span className="text-[13px] font-semibold text-ink">Not applicable — and that&apos;s a decision, not a skip</span>
+                    <span className="text-xs leading-[18px] text-muted-ink">
+                      This dimension doesn&apos;t apply to {p.name}&apos;s profile, so it was consciously ruled out (constitution Law 10). It is excluded from the coverage percentage — it is not an open gap or an unanswered question.
+                    </span>
+                  </div>
+                </div>
+              )}
               {selected.score === "gap" && (
                 <div className="flex items-center justify-between rounded-[10px] border px-4 py-3.5" style={{ backgroundColor: "var(--gap-tint)", borderColor: "#e6b0b0" }}>
                   <div className="flex flex-col gap-0.5">

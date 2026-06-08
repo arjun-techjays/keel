@@ -131,6 +131,42 @@ def _storage_headers() -> dict:
     return {"apikey": key, "Authorization": f"Bearer {key}"}
 
 
+# The six-document pack (constitution Part F), by position.
+DELIVERABLE_FILES = {
+    1: "1-executive-summary.md", 2: "2-scope.md", 3: "3-technical-architecture.md",
+    4: "4-raid.md", 5: "5-implementation-plan.md", 6: "6-approval-and-signoff.md",
+}
+
+
+def get_deliverable(project_id: str, n: int) -> str | None:
+    """Return the markdown of deliverable #n from the latest snapshot, or None if
+    there is no snapshot / the doc isn't in it (e.g. only a map was pushed). The
+    snapshot is the source of truth — nothing is mirrored into the DB."""
+    fname = DELIVERABLE_FILES.get(int(n))
+    if not fname:
+        return None
+    sb = admin()
+    snaps = (
+        sb.table("snapshots").select("storage_path")
+        .eq("project_id", project_id).order("version", desc=True).limit(1).execute().data
+    )
+    if not snaps:
+        return None
+    try:
+        r = httpx.get(
+            f"{settings.supabase_url}/storage/v1/object/snapshots/{snaps[0]['storage_path']}",
+            headers=_storage_headers(), timeout=60,
+        )
+        r.raise_for_status()
+        with zipfile.ZipFile(io.BytesIO(r.content)) as zf:
+            for name in zf.namelist():
+                if name.endswith(f"deliverables/{fname}") or name.rsplit("/", 1)[-1] == fname:
+                    return zf.read(name).decode("utf-8", "replace")
+    except Exception:
+        return None
+    return None
+
+
 def _next_version(sb, project_id: str) -> int:
     last = (
         sb.table("snapshots").select("version")

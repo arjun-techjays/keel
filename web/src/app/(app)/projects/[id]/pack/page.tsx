@@ -3,6 +3,20 @@ import { TriangleAlert, FileText, Check } from "lucide-react";
 import { getProject, getLatestRender } from "@/lib/queries";
 import { ProjectHeader } from "@/components/keel/project-header";
 import { PrintButton } from "@/components/keel/print-button";
+import { Markdown } from "@/components/keel/markdown";
+
+async function fetchDoc(projectId: string, n: number): Promise<string | null> {
+  const base = process.env.KEEL_SERVICE_URL;
+  if (!base) return null;
+  try {
+    const res = await fetch(`${base}/projects/${projectId}/doc/${n}`, { cache: "no-store" });
+    if (!res.ok) return null;
+    const text = await res.text();
+    return text.trim() ? text : null;
+  } catch {
+    return null;
+  }
+}
 
 // The six-document pack is fixed by the constitution (Part F). These are the
 // document identities only — the rendered content lives in the pushed snapshot
@@ -43,6 +57,7 @@ export default async function PackPage({
   const selected = PACK.find((d) => d.code === docParam) ?? PACK[0];
   const isDraft = p.freeze_status !== "frozen";
   const gateOk = (render.gate_result as { ok?: boolean } | null)?.ok === true;
+  const docMd = await fetchDoc(id, selected.n);
 
   return (
     <div className="flex min-h-full flex-col">
@@ -104,18 +119,22 @@ export default async function PackPage({
               <span className="text-[13px] text-muted-ink">· pack render v{render.version}</span>
             </div>
 
-            <div className="flex flex-col gap-3 rounded-[10px] border border-dashed border-hairline px-5 py-5">
-              <div className="flex items-center gap-2 text-muted-ink">
-                <FileText className="h-4 w-4" strokeWidth={2} />
-                <span className="text-[13px] font-semibold text-ink">Full content lives in the snapshot</span>
+            {docMd ? (
+              <Markdown content={docMd} />
+            ) : (
+              <div className="flex flex-col gap-3 rounded-[10px] border border-dashed border-hairline px-5 py-5">
+                <div className="flex items-center gap-2 text-muted-ink">
+                  <FileText className="h-4 w-4" strokeWidth={2} />
+                  <span className="text-[13px] font-semibold text-ink">This document isn&apos;t in the latest snapshot</span>
+                </div>
+                <p className="text-[13px] leading-[21px] text-muted-ink">
+                  <span className="font-mono text-xs">deliverables/{selected.file}</span> wasn&apos;t found in the latest
+                  pushed snapshot (the last push may have been a map/clarify sync rather than a full generate). Re-run
+                  <span className="font-mono text-xs"> /keel-generate</span> and push, then it renders here. The pack&apos;s
+                  prose is the agent&apos;s derived output and is regenerated on every push.
+                </p>
               </div>
-              <p className="text-[13px] leading-[21px] text-muted-ink">
-                The rendered document <span className="font-mono text-xs">deliverables/{selected.file}</span> is part of the
-                pushed snapshot, not mirrored into the dashboard. Run <span className="font-mono text-xs">/keel-pull</span> to
-                lay the latest pack into your working folder and read or print it there. The dashboard tracks the pack&apos;s
-                gate state and freeze status; the prose is the agent&apos;s derived output and is regenerated on every push.
-              </p>
-            </div>
+            )}
           </div>
         </div>
       </div>

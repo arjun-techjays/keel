@@ -80,11 +80,18 @@ def parse_dimensions(engagement: str, con) -> list[dict]:
         did = m.group(1)
         disc = "RAID" if did.startswith("RAID") else did.split("-")[0]
         label = (con.dims.get(did) if con else None) or (cells[1] if len(cells) > 1 else did)
+        # Last column is the Evidence / provenance cell — for an N-A row it carries
+        # the *reason it doesn't apply* (Law 10), which the dashboard shows so N/A
+        # isn't mistaken for "skipped". em-dash placeholders contribute nothing.
+        evidence = cells[-1] if len(cells) >= 4 else None
+        if evidence in ("—", "-", ""):
+            evidence = None
         dims[did] = {
             "dim_id": did,
             "discipline_id": disc,
             "name": label,
             "score": _score(ln),
+            "evidence": evidence,
         }
     return list(dims.values())
 
