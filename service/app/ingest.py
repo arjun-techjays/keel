@@ -14,6 +14,13 @@ import re
 from .config import settings
 
 ID_RE = re.compile(r"\b([A-Z]{3}-\d{2}|RAID-[ADRQ])\b")
+# A question/dimension ENTRY *leads* with its ID — after an optional bullet, table
+# pipe, bold marker, or "[". Matching only leading IDs stops prose that merely
+# MENTIONS an ID — `*(previously tracked as DAT-07)*`, `no SSO (SEC-09) in scope` —
+# from being mis-parsed into its own phantom open question.
+LEAD_ID_RE = re.compile(
+    r"^[\s>]*(?:[-*]\s+)?\|?\s*\*{0,2}\s*\[?([A-Z]{3}-\d{2}|RAID-[ADRQ])\b"
+)
 SECT_RE = re.compile(r"\bF[1-6]\.\d+\b")
 SEV_RE = re.compile(r"\b(high|med(?:ium)?|low)\b", re.I)
 FIND_ID_RE = re.compile(r"\b([FR]-?\d{2})\b")
@@ -49,7 +56,8 @@ def _score(row_text: str) -> str:
         return "partial"
     if "covered" in t:
         return "covered"
-    if "n/a" in t or re.search(r"\bna\b", t):
+    # Accept the common spellings of not-applicable: "N/A", "N-A", or a bare "na".
+    if "n/a" in t or "n-a" in t or re.search(r"\bna\b", t):
         return "na"
     return "gap"
 
@@ -63,7 +71,10 @@ def parse_dimensions(engagement: str, con) -> list[dict]:
         if not ln.lstrip().startswith("|"):
             continue
         cells = [c.strip() for c in ln.strip().strip("|").split("|")]
-        m = ID_RE.search(" | ".join(cells))
+        # The ID must be the FIRST column (the dimension-ID column). Searching the
+        # whole row would let an ID mentioned in the evidence/notes cell create a
+        # phantom dimension.
+        m = ID_RE.match(cells[0]) if cells else None
         if not m:
             continue
         did = m.group(1)
@@ -103,7 +114,11 @@ def parse_questions(engagement: str) -> list[dict]:
     for ln in text.splitlines():
         if not ln.strip():
             continue
-        m = ID_RE.search(ln)
+        # Only lines that LEAD with an ID are question entries. Continuation lines
+        # (answers starting with "→"), parentheticals ("(previously tracked as
+        # DAT-07)"), and summary lines ("[BLOCK] remaining: 0") mention IDs but are
+        # not questions — skip them so they don't become phantom open questions.
+        m = LEAD_ID_RE.match(ln)
         if not m:
             continue
         qid = m.group(1)
@@ -112,7 +127,7 @@ def parse_questions(engagement: str) -> list[dict]:
             cells = [c.strip() for c in ln.strip().strip("|").split("|")]
             text_cell = max((c for c in cells if not ID_RE.fullmatch(c)), key=len, default=qid)
         else:
-            text_cell = re.sub(r"^[\-\*\d.\s]+", "", ln).strip()
+            text_cell = re.sub(r"^[\*\]\s:.\-]+", "", ln[m.end():]).strip()
         qs[qid] = {
             "q_id": qid,
             "text": text_cell or qid,
@@ -184,19 +199,38 @@ def ingest_generate(sb, project_id: str, engagement: str) -> dict:
     # and non-question text mentioning "[BLOCK]" is ignored (no ID → not a question).
     blocks = sum(1 for q in qs if q.get("tag") == "BLOCK" and q["disposition"] in ("unanswered", "partial"))
 
+    # The pushed coverage-map / open-questions register is the COMPLETE current
+    # state — keel-map regenerates them whole each run. So after upserting, prune
+    # any DB row whose ID is absent from this push: a dimension or question that was
+    # renamed (DAT-07 → DAT-04), removed, or that was a stale phantom from the old
+    # parser must not linger as a ghost "open" item. Guarded by non-empty parses so
+    # an unreadable/empty file never wipes the project.
     if dims:
         sb.table("dimensions").upsert(
             [{**d, "project_id": project_id} for d in dims],
             on_conflict="project_id,dim_id",
         ).execute()
+        keep = {d["dim_id"] for d in dims}
+        existing = sb.table("dimensions").select("dim_id").eq("project_id", project_id).execute().data or []
+        stale = [r["dim_id"] for r in existing if r["dim_id"] not in keep]
+        if stale:
+            sb.table("dimensions").delete().eq("project_id", project_id).in_("dim_id", stale).execute()
     if qs:
         sb.table("questions").upsert(
             [{**q, "project_id": project_id} for q in qs],
             on_conflict="project_id,q_id",
         ).execute()
+        keepq = {q["q_id"] for q in qs}
+        existingq = sb.table("questions").select("q_id").eq("project_id", project_id).execute().data or []
+        staleq = [r["q_id"] for r in existingq if r["q_id"] not in keepq]
+        if staleq:
+            sb.table("questions").delete().eq("project_id", project_id).in_("q_id", staleq).execute()
 
-    total = len(dims)
-    covered = sum(d["score"] == "covered" for d in dims)
+    # Coverage is over APPLICABLE dimensions only — N-A dimensions are explicit
+    # decisions (Law 10), not gaps, and must not dilute the percentage.
+    applicable = [d for d in dims if d["score"] != "na"]
+    total = len(applicable)
+    covered = sum(d["score"] == "covered" for d in applicable)
     pct = round(covered / total * 100) if total else 0
     open_q = sum(q["disposition"] in ("unanswered", "partial") for q in qs)
 
