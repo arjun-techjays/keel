@@ -11,7 +11,9 @@ Turns the resolved engagement into the deliverable. It does not decide anything 
 
 ## Precondition — a linked project
 
-This folder must be **linked to an engagement** before generate runs. Check for `.keel/project.json`. **If it is missing, STOP and run `/keel-connect` first** (one-time link). Start the session with **`/keel-pull`** to lock the project and download the latest shared state (`coverage-map.md` + `decision-log.md`, which this skill renders from). If the binding is present, continue. (Generation stays local; the pack becomes shared, gated state only when you run `/keel-push`.)
+This folder must be **linked to an engagement** before generate runs. Check for `.keel/project.json`. **If it is missing, STOP and run `/keel-connect` first** (one-time link).
+
+This skill **manages checkout itself**: at the start (step 0) it calls `keel_pull(project_id)` to lock the project and download the latest shared state (`coverage-map.md` + `decision-log.md`, which this skill renders from), and at the end (step 8) — once the pack is written and the bundled gate is green — it calls `keel_push(project_id, …, phase="generate")`, which runs the **authoritative server gate** and records the pack render so the dashboard's Pack tab lights up. `/keel-pull` and `/keel-push` remain manual escape hatches (re-acquire after a `409`; push by hand if you edited `deliverables/` directly or auto-push failed). If the binding is present, continue.
 
 ## Where files live
 
@@ -45,7 +47,7 @@ Write **all six** every run — never a single `discovery-pack.md`, never a subs
 
 ## Workflow
 
-**0 · Gate check** (above). **1 · Confirm the coverage map is current** — if the evidence changed since the last score, re-run `keel-map` first.
+**0a · Pull — check out.** Call `keel_pull(project_id)` (id from `.keel/project.json`). On **`409`** STOP and report the holder; on success lay down the snapshot if a `snapshot_url` is returned. **0b · Gate check** (above). **1 · Confirm the coverage map is current** — if the evidence changed since the last score, re-run `keel-map` first.
 
 **2 · Build in dependency order, each doc to its Part F skeleton.** RAID and Scope first (assumptions, exclusions, modules, acceptance criteria from the decision log + covered dimensions) → Architecture and Implementation Plan (the "how" and the sequencing of that scope) → Executive Summary and Approval (which summarise and freeze the rest). Within each file, lay down **every section from that document's Part F table, in order**, then fill it — for `2-scope.md`, repeat sections `F2.3–F2.11` once per module in the breakdown.
 
@@ -72,6 +74,12 @@ Write **all six** every run — never a single `discovery-pack.md`, never a subs
 python3 <kit>/checks/check_generate.py <engagement-dir> <constitution.md>
 ```
 (`<kit>/checks/` sits next to the `constitution.md` you loaded; if the kit's `checks/` isn't present — e.g. only the constitution was copied into the project — say so and skip, noting the pack is unverified.) A **non-zero exit is a generation defect you fix now**, not something to leave for CI or the human: a dropped Part F section, a weasel word, a DRAFT-honesty miss, or — the SCO-08 ledger — a SILENT scenario / missing class / untraceable example. Fix upstream (decision-log / re-render) and re-run until the gate is green or every remaining failure is a genuine, reported freeze-prerequisite. Print the check output in the summary so the lead sees the machine verdict, not just your assertion.
+
+**8 · Push — check back in (`phase="generate"`).** Once all six docs are written and the bundled check is green, push the pack so the **server** runs the authoritative gate and the dashboard records the render. Zip and push:
+```bash
+zip -r .keel/_push.zip .keel discovery deliverables -x '.keel/_push.zip'
+```
+Base64-encode and call `keel_push(project_id, zip_base64, phase="generate")`, then `rm -f .keel/_push.zip`. Report the returned `gate` verdict **verbatim** (it is the machine verdict, not your assertion), the snapshot `version`, and that **the lock is released**. A red server gate is a *reported* outcome — fix upstream (`/keel-clarify` → re-run this skill), then push again; the snapshot still stored and the lock still released, so the next run re-pulls automatically. If the push itself fails (transport/`409`), tell the user they can retry by hand with `/keel-push` (phase `generate`).
 
 ## The scenario ledger (`SCO-08`, Law 11) — the mechanical artifact
 

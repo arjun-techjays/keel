@@ -5,6 +5,7 @@ import {
 import { CheckoutBar } from "@/components/keel/checkout-bar";
 import { ProjectMembers } from "@/components/keel/project-members";
 import { ConnectAgent } from "@/components/keel/connect-agent";
+import { ProjectHeader } from "@/components/keel/project-header";
 import { disciplineName, DISCIPLINE_ORDER } from "@/lib/disciplines";
 import { StatSurface } from "@/components/keel/stat-surface";
 import { PhasePipeline } from "@/components/keel/phase-pipeline";
@@ -106,40 +107,33 @@ export default async function WorkspacePage({ params }: { params: Promise<{ id: 
 
   return (
     <div className="flex min-h-full flex-col">
-      <div className="flex items-center justify-between px-8 py-[22px]">
-        <div className="flex flex-col gap-[7px]">
-          <div className="flex items-center gap-[7px]">
-            <span className="whitespace-nowrap text-xs font-medium text-faint">Projects</span>
-            <span className="text-xs text-faint">/</span>
-            <span className="whitespace-nowrap text-xs font-medium text-muted-ink">{p.name}</span>
+      <ProjectHeader
+        id={id}
+        name={p.name}
+        version="const. v4.2"
+        active="overview"
+        action={
+          <div className="flex items-center gap-2.5">
+            <ProjectMembers
+              projectId={id}
+              members={members}
+              candidates={candidates}
+              canAdd={isEditor}
+              canManage={canManage}
+            />
+            {isEditor ? (
+              <ConnectAgent mcpUrl={mcpUrl} existingTokenCount={activeTokenCount} />
+            ) : (
+              <span className="rounded-[9px] border border-hairline bg-panel px-3 py-2 text-xs font-medium text-muted-ink">
+                View only
+              </span>
+            )}
+            <CheckoutBar projectId={id} lock={lock} currentUserId={userId} isAdmin={role === "admin"} />
           </div>
-          <div className="flex items-center gap-3">
-            <h1 className="font-display text-[28px] font-semibold tracking-[-0.02em] text-ink">{p.name}</h1>
-            <span className="rounded-md border border-hairline bg-panel px-[7px] py-[3px] font-mono text-[11px] font-medium text-muted-ink">
-              const. v4.2
-            </span>
-          </div>
-        </div>
-        <div className="flex items-center gap-2.5">
-          <ProjectMembers
-            projectId={id}
-            members={members}
-            candidates={candidates}
-            canAdd={isEditor}
-            canManage={canManage}
-          />
-          {isEditor ? (
-            <ConnectAgent mcpUrl={mcpUrl} existingTokenCount={activeTokenCount} />
-          ) : (
-            <span className="rounded-[9px] border border-hairline bg-panel px-3 py-2 text-xs font-medium text-muted-ink">
-              View only
-            </span>
-          )}
-          <CheckoutBar projectId={id} lock={lock} currentUserId={userId} isAdmin={role === "admin"} />
-        </div>
-      </div>
+        }
+      />
 
-      <div className="flex flex-col gap-[26px] px-8 py-7 pt-1">
+      <div className="flex flex-col gap-[26px] px-8 py-7">
         {/* Status row */}
         <div className="flex items-stretch overflow-hidden rounded-[14px] border border-hairline bg-white">
           <StatSurface label="Freeze status" sub={p.block_count > 0 ? `Not signable — ${p.block_count} blockers open` : "Gate clear"}>

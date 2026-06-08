@@ -9,7 +9,9 @@ The loop between `keel-map` and `keel-generate`. It takes the open questions `ke
 
 ## Precondition — a linked project
 
-This folder must be **linked to an engagement** before clarify runs. Check for `.keel/project.json`. **If it is missing, STOP and run `/keel-connect` first** (one-time link). Start the session with **`/keel-pull`** to lock the project and download the latest shared state — the open-questions register you're about to reconcile lives in that pulled state. If the binding is present, continue.
+This folder must be **linked to an engagement** before clarify runs. Check for `.keel/project.json`. **If it is missing, STOP and run `/keel-connect` first** (one-time link).
+
+This skill **manages checkout itself**: at the start (step 0) it calls `keel_pull(project_id)` to lock the project and download the latest shared state — the open-questions register you're about to reconcile lives in that pulled state — and at the end (step 9b) it calls `keel_push(project_id, …, phase="map")` to sync the updated dispositions + block count and release the lock. `/keel-pull` and `/keel-push` remain manual escape hatches (re-acquire after a `409`; push by hand if auto-push failed). If the binding is present, continue.
 
 ## The standard it enforces
 
@@ -29,7 +31,7 @@ Read **`constitution.md`** first (project root, then kit root). Clarify lives an
 
 ## Workflow
 
-**0 · Load.** Read `constitution.md`, `discovery/open-questions.md`, `.keel/coverage-map.md`.
+**0 · Pull, then load.** First call `keel_pull(project_id)` (id from `.keel/project.json`). On **`409`** STOP and report the holder; on success lay down the snapshot if a `snapshot_url` is returned (see `/keel-pull`). Then read `constitution.md`, `discovery/open-questions.md`, `.keel/coverage-map.md`.
 
 **1 · Show the board (orient the lead before touching anything).**
 Print a categorised snapshot of the current open set so the lead sees the whole landscape at a glance. **Group by discipline** (Scope Hygiene, Product, UX, Engineering, Data/ML, Security, QA, Ops, Change, Commercial, Delivery, RAID), and within each list one line per open question: `ID · [BLOCK?] · tag · origin · the question` — surface the `raised-by: keel-review` origin so the lead can see which items came from the adversarial pass (these often ship with a suggested disposition ready to accept). Lead with a header line of totals:
@@ -81,7 +83,13 @@ Process questions in **discipline order**, pausing after each discipline to prin
 - the **gate status** (`🔴 N blocking → keel-generate gated` or `🟢 0 blocking → keel-generate unlocked`);
 - the **single next discovery action** (highest-value question or session still open).
 
-**10 · Loop.** Re-run `keel-map` to re-score against the enlarged evidence, then run `keel-clarify` again on the next round. Repeat until the gate is green.
+**9b · Push — check back in (`phase="map"`).** Sync the round's results and release the lock. Zip `.keel discovery deliverables` (deliverables may be absent this early — that's fine):
+```bash
+zip -r .keel/_push.zip .keel discovery deliverables -x '.keel/_push.zip' 2>/dev/null || zip -r .keel/_push.zip .keel discovery
+```
+Base64-encode and call `keel_push(project_id, zip_base64, phase="map")`, then `rm -f .keel/_push.zip`. The `map` phase re-ingests `open-questions.md` (updated dispositions) and the coverage map without running the document gate. Report the new block count + open-questions count and that **the lock is released**. If the push fails, tell the user they can retry with `/keel-push` (phase `map`).
+
+**10 · Loop.** Re-run `keel-map` to re-score against the enlarged evidence, then run `keel-clarify` again on the next round. Repeat until the gate is green. (Each skill re-pulls at its own start, so the lock released by this push is re-acquired automatically by the next run.)
 
 ## Outputs
 

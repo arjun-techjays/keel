@@ -9,7 +9,9 @@ The adversary in the loop. Everything upstream tried to make the pack complete a
 
 ## Precondition — a linked project
 
-This folder must be **linked to an engagement** before review runs. Check for `.keel/project.json`. **If it is missing, STOP and run `/keel-connect` first** (one-time link). Start the session with **`/keel-pull`** to lock the project and download the latest pack you're about to red-team. If the binding is present, continue.
+This folder must be **linked to an engagement** before review runs. Check for `.keel/project.json`. **If it is missing, STOP and run `/keel-connect` first** (one-time link).
+
+This skill **manages checkout itself**: **before reading anything** it calls `keel_pull(project_id)` (id from `.keel/project.json`) to lock the project and download the latest pack you're about to red-team — on a **`409`** STOP and report the holder; on success lay down the snapshot if a `snapshot_url` is returned. At the end (the *Push* step below) it calls `keel_push(project_id, …, phase="review")` to run the authoritative server gate, ingest the findings, and release the lock. `/keel-pull` and `/keel-push` remain manual escape hatches (re-acquire after a `409`; push by hand if auto-push failed). If the binding is present, continue.
 
 ## The standard
 
@@ -110,6 +112,14 @@ After writing `scope-risk-report.md`, run the bundled gate and reconcile it with
 python3 <kit>/checks/check_review.py <engagement-dir> <constitution.md>
 ```
 (`<kit>/checks/` sits beside the `constitution.md` you loaded; skip with a note if it isn't present.) It mechanically confirms the report exists, **the verdict matches the High count** (a FREEZE-CLEAR with any High is a hard failure), and **the coverage ledger references every active Part F section** (an un-probed section blocks FREEZE-CLEAR). A non-zero exit means your narrative and the machine disagree — fix the report (or finish the un-probed section) until they reconcile. Print the check output in the terminal summary. This is also where the `SCO-08` ledger is re-checked transitively: if the pack changed, re-run `keel-generate`'s check too — a freeze verdict is only as honest as the gates behind it.
+
+## Push — check back in (`phase="review"`)
+
+Once `scope-risk-report.md` is written, the findings are appended to `open-questions.md`, and the bundled check reconciles, push the **review** phase so the server runs the authoritative `check_review`, ingests the findings (they appear on the dashboard's Review tab), and releases the lock. Zip and push:
+```bash
+zip -r .keel/_push.zip .keel discovery deliverables -x '.keel/_push.zip'
+```
+Base64-encode and call `keel_push(project_id, zip_base64, phase="review")`, then `rm -f .keel/_push.zip`. Report the returned `gate` verdict **verbatim**, the snapshot `version`, the ingested finding counts, and that **the lock is released**. If you red-teamed a pack you also just generated this session, push **generate first, then review** (each push releases the lock, so re-pull between them) — or simply let `keel-generate`'s own auto-push run before this skill. If the push fails, tell the user they can retry by hand with `/keel-push` (phase `review`).
 
 ## Loop
 

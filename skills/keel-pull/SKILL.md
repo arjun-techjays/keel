@@ -9,6 +9,8 @@ The checkout — the reverse of `/keel-push`. **This is the moment the project g
 
 You run this **repeatedly** — once at the start of every session. You do **not** re-connect each time; you re-pull.
 
+> **The four working skills now auto-pull.** `keel-map`, `keel-clarify`, `keel-generate`, and `keel-review` each call `keel_pull` at their start, so in the normal flow you don't run this by hand. Reach for `/keel-pull` as a **manual escape hatch**: to re-acquire the lock after a `409` (someone else's lease freed, or your own auto-push released it mid-session), to refresh the snapshot without running a skill, or just to check out and inspect current shared state.
+
 ## Prerequisite — the Keel MCP server
 
 Confirm `keel` is connected (`/mcp`). Uses the tool `keel_pull`.

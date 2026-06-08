@@ -7,6 +7,8 @@ description: "Run when a working round is done, to send this folder's state to t
 
 The reverse of `keel-connect`. Everything you did locally — map, clarify, generate, review — stays invisible to the team until you push. Push is git-like: it ships the snapshot, the **server** runs the authoritative gate on it (you can't be trusted to run it honestly on your own machine), the structured records update the shared dashboards, and your lock is released so the next person can take the project.
 
+> **You usually don't run this by hand.** `keel-map`, `keel-clarify`, `keel-generate`, and `keel-review` now **auto-push at the end** (map/clarify → `map`, generate → `generate`, review → `review`). Reach for `/keel-push` as a **manual escape hatch**: you edited files under `deliverables/` or `.keel/` directly (outside a skill), a skill's auto-push failed, or you want to push a second phase in one session. Everything below applies equally to the automated and manual paths.
+
 ## Prerequisite — the Keel MCP server
 
 Drives the **Keel remote MCP server**; confirm `keel` is connected (`/mcp`). Calls the tool `keel_push` (and `keel_pull` when pushing two phases — see below).
@@ -29,11 +31,12 @@ Never push the client's raw source materials or `constitution.md`/`checks/` — 
 
 ## Workflow
 
-**1 · Pick the phase.** The server gate runs in two modes:
-- **`generate`** → runs `check_generate` (validates the six-document pack) and ingests coverage + questions.
+**1 · Pick the phase.** The server gate runs in three modes:
+- **`map`** → ingests coverage + open questions only; **no document gate** (the six-doc pack doesn't exist yet). Use after `keel-map`/`keel-clarify`, before generation. This is the phase that lets you sync a fresh map *without* being asked to generate the six documents.
+- **`generate`** → runs `check_generate` (validates the six-document pack), ingests coverage + questions, and records the pack render (lights up the dashboard's Pack tab).
 - **`review`** → runs `check_review` (validates the scope-risk report) and ingests findings.
 
-Choose by what you produced this round. If `deliverables/scope-risk-report.md` exists and is current, you'll want **both** (generate first, then review — see step 4). If you only re-ran clarify+generate, push **generate**. When unsure, ask.
+Choose by what you produced this round. If you only mapped or clarified (no pack), push **`map`**. If you wrote the pack, push **`generate`**. If `deliverables/scope-risk-report.md` exists and is current, you'll want generate **and** review (generate first, then review — see step 4). When unsure, ask.
 
 **2 · Zip the engagement.**
 ```bash

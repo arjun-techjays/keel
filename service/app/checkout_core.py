@@ -140,6 +140,7 @@ def do_push(user_id: str, project_id: str, content: bytes, phase: str = "generat
     path = f"{project_id}/v{version}.zip"
     sb.storage.from_("snapshots").upload(path, content, {"content-type": "application/zip", "upsert": "true"})
 
+    render_row = None
     with tempfile.TemporaryDirectory() as tmp:
         with zipfile.ZipFile(io.BytesIO(content)) as zf:
             zf.extractall(tmp)
@@ -147,14 +148,27 @@ def do_push(user_id: str, project_id: str, content: bytes, phase: str = "generat
         if phase == "review":
             gate = run_review(root)
             ingested = ingest_review(sb, project_id, root)
+        elif phase == "map":
+            # Post-map sync: ingest coverage + questions only. No document pack
+            # exists yet, so the generate gate would always fail here — skip it.
+            ingested = ingest_generate(sb, project_id, root)
+            gate = {"ok": True, "phase": "map",
+                    "note": "coverage + open questions synced; no document gate run for map"}
         else:
             gate = run_generate(root)
             ingested = ingest_generate(sb, project_id, root)
+            # A generate push that actually rendered the pack records a render row;
+            # the dashboard's Pack tab keys off this to know the pack exists.
+            if os.path.isdir(os.path.join(root, "deliverables")):
+                render_row = {"project_id": project_id, "version": version,
+                              "storage_path": path, "gate_result": gate}
 
     sb.table("snapshots").insert(
         {"project_id": project_id, "version": version, "storage_path": path,
          "created_by": user_id, "gate_result": gate}
     ).execute()
+    if render_row:
+        sb.table("renders").insert(render_row).execute()
     sb.table("projects").update({"freeze_status": "draft"}).eq("id", project_id).execute()
     _log(sb, project_id, user_id, "push", meta={"version": version, "phase": phase, "gate_ok": gate["ok"]})
     sb.table("locks").update({"status": "released"}).eq("project_id", project_id).execute()

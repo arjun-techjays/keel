@@ -7,9 +7,15 @@ description: "Audit raw discovery inputs — a one-line idea, a brief, PDFs, Wor
 
 The entry point of the kit. It does **not** write the deliverable documents — it tells you, against a fixed standard, exactly what is known, what is vague, what is missing, and how to find the rest. Everything it emits is the input to `keel-clarify`, `keel-generate`, and `keel-review`. (Skills don't call each other; they hand off through the files this one writes.)
 
-## Precondition — a linked project
+## Precondition — a linked project (this skill checks out and back in for you)
 
-Keel state is shared and server-gated; a working folder must first be **linked to an engagement**. Check for `.keel/project.json`. **If it is missing, STOP and run `/keel-connect` first** (a one-time link; creation stays web-app-only). To work against current shared state — and to lock the project so no one edits in parallel — **run `/keel-pull` at the start of the session**; it acquires the lock and downloads the latest snapshot. If the binding is present, note the linked project (`name`) in your summary and continue.
+Keel state is shared and server-gated; a working folder must first be **linked to an engagement**. Check for `.keel/project.json`. **If it is missing, STOP and run `/keel-connect` first** (a one-time link; creation stays web-app-only).
+
+This skill now **manages checkout itself** — you do not ask the user to run `/keel-pull` / `/keel-push` around it:
+- **At the start** (Workflow step 0) it calls `keel_pull(project_id)` to acquire the lock and download the latest snapshot, so you score against current shared state and no one edits in parallel.
+- **At the end** (Workflow step 9) it calls `keel_push(project_id, …, phase="map")` to sync the re-scored coverage + open questions into the shared dashboards and release the lock.
+
+`/keel-pull` and `/keel-push` remain available as **manual escape hatches** — e.g. to re-acquire the lock after a `409`, or to push by hand if this skill's auto-push failed. Note the linked project (`name`) in your summary and continue.
 
 ## The standard it scores against
 
@@ -37,7 +43,9 @@ Whatever the project lead provides: direct-dropped key documents (always), and �
 
 ## Workflow
 
-**0 · Load the standard.** Read `constitution.md`. Hold the Doctrine in mind throughout — especially: no weasel words, every score cites a source, conflicts are surfaced not resolved, nothing the lead gave you is dropped.
+**0a · Pull — check out.** Call `keel_pull(project_id)` (project_id from `.keel/project.json`). On **`409`** (held by someone else) STOP and report the holder — you can't map against state you don't hold. On success you hold the lock and the folder reflects the latest snapshot; if a `snapshot_url` is returned, lay it down (see `/keel-pull`) before scoring. Then continue.
+
+**0b · Load the standard.** Read `constitution.md`. Hold the Doctrine in mind throughout — especially: no weasel words, every score cites a source, conflicts are surfaced not resolved, nothing the lead gave you is dropped.
 
 **1 · Establish the Project Profile — and confirm it before anything else.**
 Read all inputs. Infer each of the 16 profile axes from the evidence; mark any you cannot infer as `unknown`. Present the inferred profile back as a compact table and ask the lead to confirm, correct, and fill the unknowns. **Do not proceed to scoring until the profile is confirmed** — it decides which dimensions even apply. (For a bare idea, most axes will be `unknown`; setting them is a two-minute classification, not a blocker.)
@@ -81,6 +89,12 @@ If you find drift, the fix is to re-derive the *dimension-derived* items from th
 
 **8 · Emit and summarise.**
 Write the four files. `.keel/coverage-map.md` **leads with a Blocking View** — the conflicts, the highest-severity blockers (ranked, each pointing to its open-question ID), and the count of undecided Recommended items — and relegates the full per-dimension scoring to an **Appendix**, so the default read is *what to act on*, not all ~80 rows. Then print a short summary in the terminal: the confirmed profile; counts (Required covered / partial / gap; Recommended included / excluded / undecided); the conflicts; the top blocking open questions; the path to `discovery/open-questions.md` so the lead knows where to act; and the single highest-value discovery activity to do next.
+
+**9 · Push — check back in (`phase="map"`).** Map produces no document pack, so push the **map** phase — it syncs coverage + open questions to the shared dashboards *without* running the document gate (no "generate the six docs?" prompt). Zip and push:
+```bash
+zip -r .keel/_push.zip .keel discovery deliverables -x '.keel/_push.zip' 2>/dev/null || zip -r .keel/_push.zip .keel discovery
+```
+Base64-encode and call `keel_push(project_id, zip_base64, phase="map")`, then `rm -f .keel/_push.zip`. Report the ingested counts (dimensions, coverage %, block count, open questions) and that **your lock is now released** — the team can see the fresh map, and the lead can go gather answers before `/keel-clarify`. If the push fails, say so and tell the user they can retry by hand with `/keel-push` (phase `map`).
 
 ## Exit criterion (the gate this skill reports against)
 

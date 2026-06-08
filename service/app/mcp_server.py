@@ -151,7 +151,14 @@ def keel_pull(project_id: str) -> dict:
 @mcp.tool()
 def keel_push(project_id: str, zip_base64: str, phase: str = "generate") -> dict:
     """Push the engagement (a base64-encoded zip of .keel/ discovery/ deliverables/),
-    run the gate, and ingest state. phase = 'generate' or 'review'. You must hold the lock."""
+    run the gate, and ingest state. You must hold the lock.
+
+    phase:
+      'map'      — sync coverage + open questions only; no document gate (use after
+                   keel-map / keel-clarify, before the pack exists).
+      'generate' — run check_generate on the six-doc pack; records a pack render.
+      'review'   — run check_review on the scope-risk report; ingests findings.
+    """
     uid = _uid()
     if not uid:
         return {"ok": False, "error": "unauthenticated"}

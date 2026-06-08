@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { getProject, getDimensions } from "@/lib/queries";
 import { disciplineName, DISCIPLINE_ORDER } from "@/lib/disciplines";
@@ -12,12 +13,22 @@ const SCORE: Record<Score, { label: string; color: string; tint: string; text: s
   na: { label: "N/A", color: "#9aa1ac", tint: "var(--hairline-soft)", text: "text-faint" },
 };
 
-export default async function CoveragePage({ params }: { params: Promise<{ id: string }> }) {
+export default async function CoveragePage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ dim?: string }>;
+}) {
   const { id } = await params;
+  const { dim: dimParam } = await searchParams;
   const [p, dims] = await Promise.all([getProject(id), getDimensions(id)]);
   if (!p) return <div className="p-8 text-muted-ink">Project not found.</div>;
 
-  const selected = dims.find((d) => d.score === "gap") ?? dims[0];
+  const selected =
+    dims.find((d) => d.dim_id === dimParam) ??
+    dims.find((d) => d.score === "gap") ??
+    dims[0];
   const s = selected ? SCORE[selected.score as Score] : SCORE.gap;
 
   const groups = DISCIPLINE_ORDER.map((dId) => ({
@@ -60,9 +71,9 @@ export default async function CoveragePage({ params }: { params: Promise<{ id: s
         <div className="flex w-[440px] shrink-0 flex-col overflow-hidden rounded-[14px] border border-hairline bg-white">
           {groups.map((g) => (
             <div key={g.id}>
-              <div className="flex items-center gap-2 border-b border-hairline bg-panel px-4 py-2.5">
-                <span className="text-[13px] font-semibold text-ink">{g.name}</span>
-                <span className="font-mono text-[11px] text-faint">{g.id}</span>
+              <div className="flex items-center gap-2 border-y border-hairline bg-[#f4f6f8] px-4 py-2">
+                <span className="text-[11px] font-semibold uppercase tracking-[0.06em] text-muted-ink">{g.name}</span>
+                <span className="font-mono text-[10px] text-faint">{g.id}</span>
                 <div className="flex-1" />
                 <span className="tnum font-mono text-[11px] text-faint">
                   {g.dims.filter((d) => d.score === "covered").length}/{g.dims.length}
@@ -72,16 +83,18 @@ export default async function CoveragePage({ params }: { params: Promise<{ id: s
                 const ds = SCORE[d.score as Score];
                 const isSel = selected && d.id === selected.id;
                 return (
-                  <div
+                  <Link
                     key={d.id}
-                    className={`flex items-center gap-3 border-l-2 px-4 py-2.5 ${isSel ? "border-cobalt bg-cobalt-tint/40" : "border-transparent hover:bg-panel"}`}
+                    href={`/projects/${id}/coverage?dim=${d.dim_id}`}
+                    scroll={false}
+                    className={`flex items-center gap-3 border-l-2 px-4 py-2.5 ${isSel ? "border-cobalt bg-cobalt-tint/60" : "border-transparent hover:bg-panel"}`}
                     style={{ borderBottom: "1px solid var(--hairline-soft)" }}
                   >
                     <span className="h-2.5 w-2.5 shrink-0 rounded-sm" style={{ backgroundColor: ds.color }} />
                     <span className="w-[58px] shrink-0 font-mono text-xs font-semibold text-ink">{d.dim_id}</span>
-                    <span className="flex-1 truncate text-[13px] text-muted-ink">{d.name}</span>
+                    <span className={`flex-1 truncate text-[13px] ${isSel ? "font-semibold text-ink" : "text-muted-ink"}`}>{d.name}</span>
                     <span className={`shrink-0 text-[11px] font-semibold ${ds.text}`}>{ds.label}</span>
-                  </div>
+                  </Link>
                 );
               })}
             </div>

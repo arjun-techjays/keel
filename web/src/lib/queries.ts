@@ -68,6 +68,18 @@ export async function getLatestReview(projectId: string) {
   return { run, findings: findings ?? [] };
 }
 
+export async function getLatestRender(projectId: string) {
+  const sb = await createClient();
+  const { data } = await sb
+    .from("renders")
+    .select("id,version,gate_result,created_at")
+    .eq("project_id", projectId)
+    .order("version", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  return data;
+}
+
 export async function getLock(projectId: string) {
   const sb = await createClient();
   const { data } = await sb
