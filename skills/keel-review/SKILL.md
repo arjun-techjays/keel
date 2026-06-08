@@ -115,11 +115,15 @@ python3 <kit>/checks/check_review.py <engagement-dir> <constitution.md>
 
 ## Push — check back in (`phase="review"`)
 
-Once `scope-risk-report.md` is written, the findings are appended to `open-questions.md`, and the bundled check reconciles, push the **review** phase so the server runs the authoritative `check_review`, ingests the findings (they appear on the dashboard's Review tab), and releases the lock. Zip and push:
+Once `scope-risk-report.md` is written, the findings are appended to `open-questions.md`, and the bundled check reconciles, push the **review** phase so the server runs the authoritative `check_review`, ingests the findings (they appear on the dashboard's Review tab), and releases the lock. Use the **begin → PUT → finish** flow — **never base64-encode the zip or read it into context; that stalls the agent**:
 ```bash
 zip -r .keel/_push.zip .keel discovery deliverables -x '.keel/_push.zip'
 ```
-Base64-encode and call `keel_push(project_id, zip_base64, phase="review")`, then `rm -f .keel/_push.zip`. Report the returned `gate` verdict **verbatim**, the snapshot `version`, the ingested finding counts, and that **the lock is released**. If you red-teamed a pack you also just generated this session, push **generate first, then review** (each push releases the lock, so re-pull between them) — or simply let `keel-generate`'s own auto-push run before this skill. If the push fails, tell the user they can retry by hand with `/keel-push` (phase `review`).
+- `keel_push_begin(project_id, phase="review")` → `version` + `upload_url`
+- `curl -sS -X PUT "<upload_url>" --data-binary @.keel/_push.zip -H "Content-Type: application/zip"`
+- `keel_push_finish(project_id, version, phase="review")`
+
+Then `rm -f .keel/_push.zip`. Report the returned `gate` verdict **verbatim**, the snapshot `version`, the ingested finding counts, and that **the lock is released**. If you red-teamed a pack you also just generated this session, push **generate first, then review** (each finish releases the lock, so re-pull between them) — or simply let `keel-generate`'s own auto-push run before this skill. If a step fails, tell the user they can retry by hand with `/keel-push` (phase `review`).
 
 ## Loop
 

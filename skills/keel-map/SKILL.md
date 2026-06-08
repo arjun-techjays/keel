@@ -90,11 +90,15 @@ If you find drift, the fix is to re-derive the *dimension-derived* items from th
 **8 · Emit and summarise.**
 Write the four files. `.keel/coverage-map.md` **leads with a Blocking View** — the conflicts, the highest-severity blockers (ranked, each pointing to its open-question ID), and the count of undecided Recommended items — and relegates the full per-dimension scoring to an **Appendix**, so the default read is *what to act on*, not all ~80 rows. Then print a short summary in the terminal: the confirmed profile; counts (Required covered / partial / gap; Recommended included / excluded / undecided); the conflicts; the top blocking open questions; the path to `discovery/open-questions.md` so the lead knows where to act; and the single highest-value discovery activity to do next.
 
-**9 · Push — check back in (`phase="map"`).** Map produces no document pack, so push the **map** phase — it syncs coverage + open questions to the shared dashboards *without* running the document gate (no "generate the six docs?" prompt). Zip and push:
+**9 · Push — check back in (`phase="map"`).** Map produces no document pack, so push the **map** phase — it syncs coverage + open questions to the shared dashboards *without* running the document gate (no "generate the six docs?" prompt). Use the **begin → PUT → finish** flow — **never base64-encode the zip or read it into context; that stalls the agent**:
 ```bash
 zip -r .keel/_push.zip .keel discovery deliverables -x '.keel/_push.zip' 2>/dev/null || zip -r .keel/_push.zip .keel discovery
 ```
-Base64-encode and call `keel_push(project_id, zip_base64, phase="map")`, then `rm -f .keel/_push.zip`. Report the ingested counts (dimensions, coverage %, block count, open questions) and that **your lock is now released** — the team can see the fresh map, and the lead can go gather answers before `/keel-clarify`. If the push fails, say so and tell the user they can retry by hand with `/keel-push` (phase `map`).
+- `keel_push_begin(project_id, phase="map")` → returns `version` + `upload_url`
+- `curl -sS -X PUT "<upload_url>" --data-binary @.keel/_push.zip -H "Content-Type: application/zip"`
+- `keel_push_finish(project_id, version, phase="map")`
+
+Then `rm -f .keel/_push.zip`. Report the ingested counts (dimensions, coverage %, block count, open questions) and that **your lock is now released** — the team can see the fresh map, and the lead can go gather answers before `/keel-clarify`. If any step fails, say so and tell the user they can retry by hand with `/keel-push` (phase `map`).
 
 ## Exit criterion (the gate this skill reports against)
 

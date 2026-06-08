@@ -8,6 +8,8 @@ import tempfile
 import zipfile
 from datetime import datetime, timedelta, timezone
 
+import httpx
+
 from .config import settings
 from .db import admin
 from .gates import run_generate, run_review
@@ -124,22 +126,32 @@ def do_force_release(admin_user_id: str, project_id: str) -> dict:
     return {"ok": True}
 
 
-def do_push(user_id: str, project_id: str, content: bytes, phase: str = "generate") -> dict:
-    sb = admin()
+def _storage_headers() -> dict:
+    key = settings.supabase_service_key
+    return {"apikey": key, "Authorization": f"Bearer {key}"}
+
+
+def _next_version(sb, project_id: str) -> int:
+    last = (
+        sb.table("snapshots").select("version")
+        .eq("project_id", project_id).order("version", desc=True).limit(1).execute().data
+    )
+    return (last[0]["version"] + 1) if last else 1
+
+
+def _push_precondition(sb, user_id: str, project_id: str) -> dict | None:
+    """Shared editor + lock guard for every push entry point. None = ok."""
     if not is_editor(sb, user_id, project_id):
         return {"ok": False, "status": 403, "error": "You're not an editor of this project"}
     lock = _get_lock(sb, project_id)
     if not lock or lock["holder_id"] != user_id or lock["status"] != "held":
         return {"ok": False, "status": 409, "error": "You do not hold this lock"}
+    return None
 
-    last = (
-        sb.table("snapshots").select("version")
-        .eq("project_id", project_id).order("version", desc=True).limit(1).execute().data
-    )
-    version = (last[0]["version"] + 1) if last else 1
-    path = f"{project_id}/v{version}.zip"
-    sb.storage.from_("snapshots").upload(path, content, {"content-type": "application/zip", "upsert": "true"})
 
+def _finalize_push(sb, user_id, project_id, content, phase, version, path) -> dict:
+    """Extract → gate → ingest → record snapshot → release lock. Shared by the legacy
+    single-call push and the presigned-upload finish, so both behave identically."""
     render_row = None
     with tempfile.TemporaryDirectory() as tmp:
         with zipfile.ZipFile(io.BytesIO(content)) as zf:
@@ -172,5 +184,75 @@ def do_push(user_id: str, project_id: str, content: bytes, phase: str = "generat
     sb.table("projects").update({"freeze_status": "draft"}).eq("id", project_id).execute()
     _log(sb, project_id, user_id, "push", meta={"version": version, "phase": phase, "gate_ok": gate["ok"]})
     sb.table("locks").update({"status": "released"}).eq("project_id", project_id).execute()
-
     return {"ok": True, "version": version, "phase": phase, "gate": gate, "ingested": ingested}
+
+
+def do_push(user_id: str, project_id: str, content: bytes, phase: str = "generate") -> dict:
+    """Legacy single-call push: the whole zip arrives in `content` (base64 over MCP,
+    or multipart over REST). Fine for the web app and programmatic clients; agents
+    should prefer begin → upload → finish so the binary never passes through the
+    model's token stream (a large base64 tool-argument stalls the agent)."""
+    sb = admin()
+    err = _push_precondition(sb, user_id, project_id)
+    if err:
+        return err
+    version = _next_version(sb, project_id)
+    path = f"{project_id}/v{version}.zip"
+    sb.storage.from_("snapshots").upload(path, content, {"content-type": "application/zip", "upsert": "true"})
+    return _finalize_push(sb, user_id, project_id, content, phase, version, path)
+
+
+def do_push_begin(user_id: str, project_id: str, phase: str = "generate") -> dict:
+    """Reserve the next snapshot version and return a presigned URL the client PUTs the
+    zip to directly. This keeps the binary entirely out of the agent/model: the model
+    only handles a short URL, and `curl` streams the file straight to storage."""
+    sb = admin()
+    err = _push_precondition(sb, user_id, project_id)
+    if err:
+        return err
+    version = _next_version(sb, project_id)
+    path = f"{project_id}/v{version}.zip"
+    try:
+        r = httpx.post(
+            f"{settings.supabase_url}/storage/v1/object/upload/sign/snapshots/{path}",
+            headers=_storage_headers(), timeout=30,
+        )
+        r.raise_for_status()
+        rel = r.json()["url"]  # /object/upload/sign/snapshots/<path>?token=...
+    except Exception as e:  # pragma: no cover
+        return {"ok": False, "status": 502, "error": f"could not create upload url: {e}"}
+    upload_url = f"{settings.supabase_url}/storage/v1{rel}" if rel.startswith("/") else rel
+    return {
+        "ok": True, "version": version, "path": path, "phase": phase,
+        "upload_url": upload_url,
+        "next": ("PUT the engagement zip to upload_url, then call keel_push_finish "
+                 f"with version={version} and phase='{phase}'. "
+                 "curl -sS -X PUT '<upload_url>' --data-binary @.keel/_push.zip "
+                 "-H 'Content-Type: application/zip'"),
+    }
+
+
+def do_push_finish(user_id: str, project_id: str, version: int, phase: str = "generate") -> dict:
+    """Complete a push begun with do_push_begin (after the client PUT the zip to the
+    presigned URL): download the uploaded zip, run the real gate, ingest, record the
+    snapshot, and release the lock."""
+    sb = admin()
+    err = _push_precondition(sb, user_id, project_id)
+    if err:
+        return err
+    try:
+        version = int(version)
+    except (TypeError, ValueError):
+        return {"ok": False, "status": 400, "error": "version must be an integer from keel_push_begin"}
+    path = f"{project_id}/v{version}.zip"
+    try:
+        r = httpx.get(
+            f"{settings.supabase_url}/storage/v1/object/snapshots/{path}",
+            headers=_storage_headers(), timeout=120,
+        )
+        r.raise_for_status()
+        content = r.content
+    except Exception as e:
+        return {"ok": False, "status": 400,
+                "error": f"no uploaded snapshot at v{version} — did the upload PUT succeed? ({e})"}
+    return _finalize_push(sb, user_id, project_id, content, phase, version, path)

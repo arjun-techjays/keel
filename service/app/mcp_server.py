@@ -170,6 +170,31 @@ def keel_push(project_id: str, zip_base64: str, phase: str = "generate") -> dict
 
 
 @mcp.tool()
+def keel_push_begin(project_id: str, phase: str = "generate") -> dict:
+    """Begin a push WITHOUT sending the zip through the model. Reserves a snapshot
+    version and returns a presigned `upload_url`. The agent then PUTs the engagement
+    zip straight to that URL with curl (NEVER base64-encode it or read it into
+    context), and finishes with keel_push_finish. You must hold the lock.
+    phase = map | generate | review."""
+    uid = _uid()
+    if not uid:
+        return {"ok": False, "error": "unauthenticated"}
+    return core.do_push_begin(uid, project_id, phase)
+
+
+@mcp.tool()
+def keel_push_finish(project_id: str, version: int, phase: str = "generate") -> dict:
+    """Finish a push begun with keel_push_begin, AFTER you have PUT the zip to its
+    `upload_url`. The server downloads the uploaded zip, runs the authoritative gate,
+    ingests state, records snapshot v<version>, and releases your lock. Pass the same
+    `version` and `phase` returned by keel_push_begin."""
+    uid = _uid()
+    if not uid:
+        return {"ok": False, "error": "unauthenticated"}
+    return core.do_push_finish(uid, project_id, version, phase)
+
+
+@mcp.tool()
 def keel_release(project_id: str) -> dict:
     """Release your lock on the project."""
     uid = _uid()

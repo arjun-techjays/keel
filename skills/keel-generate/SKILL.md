@@ -75,11 +75,15 @@ python3 <kit>/checks/check_generate.py <engagement-dir> <constitution.md>
 ```
 (`<kit>/checks/` sits next to the `constitution.md` you loaded; if the kit's `checks/` isn't present — e.g. only the constitution was copied into the project — say so and skip, noting the pack is unverified.) A **non-zero exit is a generation defect you fix now**, not something to leave for CI or the human: a dropped Part F section, a weasel word, a DRAFT-honesty miss, or — the SCO-08 ledger — a SILENT scenario / missing class / untraceable example. Fix upstream (decision-log / re-render) and re-run until the gate is green or every remaining failure is a genuine, reported freeze-prerequisite. Print the check output in the summary so the lead sees the machine verdict, not just your assertion.
 
-**8 · Push — check back in (`phase="generate"`).** Once all six docs are written and the bundled check is green, push the pack so the **server** runs the authoritative gate and the dashboard records the render. Zip and push:
+**8 · Push — check back in (`phase="generate"`).** Once all six docs are written and the bundled check is green, push the pack so the **server** runs the authoritative gate and the dashboard records the render. Use the **begin → PUT → finish** flow — **never base64-encode the zip or read it into context; that stalls the agent for minutes and the push never lands**:
 ```bash
 zip -r .keel/_push.zip .keel discovery deliverables -x '.keel/_push.zip'
 ```
-Base64-encode and call `keel_push(project_id, zip_base64, phase="generate")`, then `rm -f .keel/_push.zip`. Report the returned `gate` verdict **verbatim** (it is the machine verdict, not your assertion), the snapshot `version`, and that **the lock is released**. A red server gate is a *reported* outcome — fix upstream (`/keel-clarify` → re-run this skill), then push again; the snapshot still stored and the lock still released, so the next run re-pulls automatically. If the push itself fails (transport/`409`), tell the user they can retry by hand with `/keel-push` (phase `generate`).
+- `keel_push_begin(project_id, phase="generate")` → `version` + `upload_url`
+- `curl -sS -X PUT "<upload_url>" --data-binary @.keel/_push.zip -H "Content-Type: application/zip"`
+- `keel_push_finish(project_id, version, phase="generate")`
+
+Then `rm -f .keel/_push.zip`. Report the returned `gate` verdict **verbatim** (the machine verdict, not your assertion), the snapshot `version`, and that **the lock is released**. A red server gate is a *reported* outcome — fix upstream (`/keel-clarify` → re-run this skill), then push again; the snapshot is still stored and the lock still released, so the next run re-pulls automatically. If a step fails (transport/`409`), tell the user they can retry by hand with `/keel-push` (phase `generate`).
 
 ## The scenario ledger (`SCO-08`, Law 11) — the mechanical artifact
 

@@ -83,11 +83,15 @@ Process questions in **discipline order**, pausing after each discipline to prin
 - the **gate status** (`🔴 N blocking → keel-generate gated` or `🟢 0 blocking → keel-generate unlocked`);
 - the **single next discovery action** (highest-value question or session still open).
 
-**9b · Push — check back in (`phase="map"`).** Sync the round's results and release the lock. Zip `.keel discovery deliverables` (deliverables may be absent this early — that's fine):
+**9b · Push — check back in (`phase="map"`).** Sync the round's results and release the lock via the **begin → PUT → finish** flow — **never base64-encode the zip or read it into context (it stalls the agent)**. Zip `.keel discovery deliverables` (deliverables may be absent this early — fine):
 ```bash
 zip -r .keel/_push.zip .keel discovery deliverables -x '.keel/_push.zip' 2>/dev/null || zip -r .keel/_push.zip .keel discovery
 ```
-Base64-encode and call `keel_push(project_id, zip_base64, phase="map")`, then `rm -f .keel/_push.zip`. The `map` phase re-ingests `open-questions.md` (updated dispositions) and the coverage map without running the document gate. Report the new block count + open-questions count and that **the lock is released**. If the push fails, tell the user they can retry with `/keel-push` (phase `map`).
+- `keel_push_begin(project_id, phase="map")` → `version` + `upload_url`
+- `curl -sS -X PUT "<upload_url>" --data-binary @.keel/_push.zip -H "Content-Type: application/zip"`
+- `keel_push_finish(project_id, version, phase="map")`
+
+Then `rm -f .keel/_push.zip`. The `map` phase re-ingests `open-questions.md` (updated dispositions) and the coverage map without running the document gate. Report the new block count + open-questions count and that **the lock is released**. If a step fails, tell the user they can retry with `/keel-push` (phase `map`).
 
 **10 · Loop.** Re-run `keel-map` to re-score against the enlarged evidence, then run `keel-clarify` again on the next round. Repeat until the gate is green. (Each skill re-pulls at its own start, so the lock released by this push is re-acquired automatically by the next run.)
 

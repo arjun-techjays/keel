@@ -44,13 +44,25 @@ zip -r .keel/_push.zip .keel discovery deliverables -x '.keel/_push.zip'
 ```
 (Create the zip outside the three folders or exclude it as above so it doesn't try to include itself.)
 
-**3 · Push and read the gate verdict.**
-Base64-encode the zip and call `keel_push(project_id, zip_base64, phase)`. Report the returned `gate` result **verbatim** — it is the machine verdict, not your assertion:
-- **`gate.ok: true`** → the pack passed the server gate; the platform now reflects this state (`version` returned). 
-- **`gate.ok: false`** → the gate is **red**. Print exactly what failed. Do **not** try to fix it by hand-editing `deliverables/` — those are derived. Fix **upstream** (resolve in `/keel-clarify`, re-render with `/keel-generate`), then push again. The push still stored a snapshot and **released your lock**, so run `/keel-pull` to re-acquire before the next push.
+**3 · Upload the zip — the three-step flow (begin → PUT → finish).**
+> **🚫 Never base64-encode the zip or read it into your context.** The zip is binary; pushing it as a `keel_push` tool argument forces *you* (the model) to regurgitate the whole blob token-by-token, which stalls for minutes and never completes. Instead the bytes go straight to storage over HTTP via `curl`, and you only handle a short URL.
+
+1. Call **`keel_push_begin(project_id, phase)`** → returns `version` and a presigned **`upload_url`**.
+2. PUT the zip's bytes directly to that URL (paste `upload_url` verbatim):
+   ```bash
+   curl -sS -X PUT "<upload_url>" --data-binary @.keel/_push.zip -H "Content-Type: application/zip"
+   ```
+   Expect a small JSON like `{"Key":"snapshots/…"}`. (On failure, re-run `keel_push_begin` to get a fresh URL/version and retry — the URL is single-use.)
+3. Call **`keel_push_finish(project_id, version, phase)`** (the `version` from step 1) → the server downloads the uploaded zip, runs the real gate, ingests state, and releases your lock.
+
+Report the returned `gate` result **verbatim** — it is the machine verdict, not your assertion:
+- **`gate.ok: true`** → the pack passed the server gate; the platform now reflects this state (`version` returned).
+- **`gate.ok: false`** → the gate is **red**. Print exactly what failed. Do **not** hand-edit `deliverables/` — those are derived. Fix **upstream** (resolve in `/keel-clarify`, re-render with `/keel-generate`), then push again. The finish still stored a snapshot and **released your lock**, so run `/keel-pull` to re-acquire before the next push.
+
+(The legacy single-call `keel_push(project_id, zip_base64, phase)` still exists for tiny/programmatic pushes, but **do not use it from an agent** — it is the exact base64-through-the-model trap above.)
 
 **4 · Two-phase push (generate → review), when both apply.**
-`keel_push` **releases the lock on every push**. To push generate *and* review in one session: push `generate`, then immediately call `keel_pull(project_id)` again to re-acquire the lock (your local files are already current — don't re-extract the snapshot), then push `review`. Report both gate verdicts. If the re-`keel_pull` returns `409`, someone raced in for the lock between phases — report it and push `review` later after another `/keel-pull`.
+A finish **releases the lock**. To push generate *and* review in one session: do the begin→PUT→finish for `generate`, then `keel_pull(project_id)` to re-acquire the lock (your local files are already current — don't re-extract the snapshot), then begin→PUT→finish for `review`. Report both gate verdicts. If the re-`keel_pull` returns `409`, someone raced in for the lock between phases — report it and push `review` later after another `/keel-pull`.
 
 **5 · Clean up and report.**
 `rm -f .keel/_push.zip`. Summarize: the project, the snapshot `version`(s) created, each phase's gate verdict, and that **your lock is now released** (the team can pull). If you intend to keep working, run `/keel-pull` again to re-acquire the lock.
