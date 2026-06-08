@@ -48,10 +48,12 @@ The list shows each engagement's status, coverage %, open blockers, open questio
 
 ### Inside a project (the tabs)
 
+Every tab carries the project's tab bar (Overview · Questions · Coverage · Pack · Review), so you can move between them from anywhere — including back to Overview.
+
 - **Overview** — this project's dashboard: freeze status, `[BLOCK]` count, coverage, the phase pipeline, coverage by discipline, and open questions. The **checkout controls** (Pull / Push / Release) live here.
-- **Questions (Clarify)** — open questions grouped by the **research method** needed to answer them (Stakeholder interview, Document review, etc.), each assignable to a teammate. *Answering happens in your agent or via push* — this tab is the shared view of what's open and how it was closed.
-- **Coverage** — every dimension, scored **Covered / Partial / Gap**. Click a gap to see its blocker.
-- **Pack** — the six rendered deliverables. **DRAFT** until frozen; sections with open blockers show **BLOCKED**. **Export PDF** prints the document via your browser's *Save as PDF*.
+- **Questions (Clarify)** — open questions grouped by **discipline** (Scope, Data & Privacy, Security, …), each showing its status. Click a question to read it; closed items show a check. *Answering happens in your agent or via push* — this tab is the shared view of what's open and how it was closed.
+- **Coverage** — every dimension, scored **Covered / Partial / Gap**. **Click any dimension** to inspect it (its evidence, score, and any blocker) — not just the gaps.
+- **Pack** — the six rendered deliverables. The tab is **empty until you push a `generate`** (run `/keel-generate` first); after that it shows the pack with its **DRAFT / FROZEN** status and gate result. The rendered prose lives in your pulled snapshot (`deliverables/`); pull to read or print it. **Export PDF** prints via your browser's *Save as PDF*.
 - **Review** — the scope-risk findings and the freeze verdict.
 
 ### Dashboard (admins only)
@@ -66,8 +68,13 @@ A project is edited **one person at a time**, like checking out a file.
 
 1. **Pull & lock** (Overview tab) — claims the project. Everyone else now sees "you're working" and can't push.
 2. Do the work — in the web app, or in your own agent (§6).
-3. **Upload & push** — upload a `.zip` of the engagement folder. Pick the phase (**generate** or **review**). Keel runs the real gate on your upload and updates coverage, questions, and findings.
+3. **Upload & push** — upload a `.zip` of the engagement folder. Pick the phase (**map**, **generate**, or **review**). Keel runs the real gate on your upload and updates coverage, questions, and findings.
+   - **map** — syncs coverage + open questions only, with **no document gate**. Use after mapping/clarifying, before the pack exists. (This is what an agent's `/keel-map` and `/keel-clarify` push — so a fresh map syncs without being asked to generate the six documents.)
+   - **generate** — runs the pack gate over the six documents and records the render that lights up the Pack tab.
+   - **review** — runs the scope-risk gate and ingests the findings.
 4. **Release** when you're done (locks also auto-release after ~15 min of inactivity).
+
+> **Agents do this for you.** When you work from Claude Code / Codex (§6), the four working skills now **pull at the start and push at the end automatically** — you don't run Pull/Push by hand in the normal flow. The manual controls above (and `/keel-pull` / `/keel-push`) remain as escape hatches.
 
 The **Snapshot** button downloads the latest pushed state so the next person can continue where you left off.
 
@@ -131,6 +138,8 @@ Install the skills/constitution/checks the same way as above, then restart Codex
 
 ### 6c. Full walkthrough — a fresh project to a signed PDF
 
+> **Auto checkout (read this first).** `/keel-map`, `/keel-clarify`, `/keel-generate`, and `/keel-review` now **pull at the start and push at the end on their own** — map/clarify push a `map` sync, generate runs the generate gate, review runs the review gate. The `/keel-pull` and `/keel-push` steps below are shown so you understand what each skill does under the hood, but in the normal flow **you don't run them by hand**. Reach for `/keel-pull` / `/keel-push` only as escape hatches — e.g. to re-take the lock after a `409`, or to push files you edited directly (outside a skill) or that a skill's auto-push failed to send. `/keel-connect` is still a real one-time step you run yourself.
+
 ```bash
 # 0. Create the project in the web app (New project). Creation is web-app-only —
 #    it pins the project to the active constitution. Then start a working folder
@@ -145,34 +154,38 @@ mkdir northwind && cd northwind
 #    You only ever do this once per folder. This is the gate: /keel-map and the
 #    rest refuse to run until a project is linked.
 
-# 2. PULL — check out: lock the project + download the latest state
+# 2. PULL — optional now: each working skill below pulls on its own at start
 /keel-pull
-#    acquires the WHOLE-PROJECT lock (everyone else is now view-only — this is how
-#    you stop parallel edits) and downloads the latest snapshot into the folder.
-#    Run this at the START of EVERY work session — including when you return later.
-#    Locked by someone else? You wait — only one person holds it at a time.
-#    (Brand-new engagement → nothing to download yet, that's fine.)
+#    acquires the WHOLE-PROJECT lock (everyone else is now view-only) and downloads
+#    the latest snapshot. /keel-map et al. now do this for you — run it by hand only
+#    to inspect current state or re-take the lock. Locked by someone else? You wait.
 
 # 3. MAP — score what you have against the constitution
 /keel-map
+#    AUTO: pulls (lock + latest) at start, pushes phase=map at end (syncs coverage +
+#    questions to the dashboard, no doc gate, releases the lock).
 #    writes: .keel/coverage-map.md, discovery/open-questions.md, discovery/discovery-plan.md
-#    the plan groups questions by research method (interview, document review, …)
 
 # 4. CLARIFY — close the open questions
 /keel-clarify
+#    AUTO: pulls at start, pushes phase=map at end (syncs the updated dispositions).
 #    answer one-by-one in the terminal, or drop answer files into discovery/answers/
 #    for anything you can't answer, disposition it: assumption / exclusion / defer (T&M)
 
 # 5. LOOP 1 — re-map to re-score, repeat until no blockers
 /keel-map
 #    keep going /keel-clarify → /keel-map until open-questions shows [BLOCK] = 0
+#    (each run re-pulls automatically, so the lock released by the prior push is re-taken)
 
 # 6. GENERATE — render the six-document pack (only works at [BLOCK] = 0)
 /keel-generate
+#    AUTO: pulls at start; after writing the six docs and passing the bundled check,
+#    pushes phase=generate (runs the REAL server gate + records the pack render).
 #    writes deliverables/1-executive-summary.md … 6-approval-and-signoff.md
 
 # 7. REVIEW — red-team the pack for scope risk
 /keel-review
+#    AUTO: pulls at start, pushes phase=review at end (server gate + ingests findings).
 #    writes deliverables/scope-risk-report.md with findings + a freeze verdict
 
 # 8. LOOP 2 — findings go back to clarify, then regenerate + re-review
@@ -180,27 +193,28 @@ mkdir northwind && cd northwind
 /keel-generate       # re-render
 /keel-review         # until 0 High findings + full coverage
 
-# 9. PUSH — send the result to the shared platform (runs the server gate, releases lock)
+# 9. PUSH — usually automatic (the skills above push for you). Manual escape hatch:
 /keel-push
-#    zips .keel/ discovery/ deliverables/, uploads via MCP, runs the REAL server
-#    gate (generate, then review), updates the shared dashboards, and releases
-#    your lock. A red gate is reported here — fix upstream (clarify→generate) and
-#    /keel-push again. (You can still push from the web app instead: Overview →
-#    Pull & lock → upload zip → Push → Release.)
+#    use by hand when you edited deliverables/ or .keel/ directly (outside a skill),
+#    a skill's auto-push failed, or you want to re-push a phase. Zips the engagement,
+#    runs the REAL server gate (phase: map | generate | review), updates the shared
+#    dashboards, and releases the lock. A red gate is reported — fix upstream
+#    (clarify→generate) and push again. (Web alternative: Overview → Pull & lock →
+#    upload zip → Push → Release.)
 
 # 10. FREEZE + PDF — make the Recommended decisions, get sign-off, export
 #    Pack tab → Export PDF  (your browser's Save as PDF produces the client PDF)
 ```
 
-**The three checkout verbs — the rhythm to remember:**
+**The rhythm to remember:**
 
-- **`/keel-connect` — once per folder.** Records *which* project this folder is. No lock.
-- **`/keel-pull` — every session.** Checks the project out: takes the lock (others view-only) and pulls the latest. Returning tomorrow? Just `/keel-pull` again — you don't re-connect.
-- **`/keel-push` — end of session.** Runs the gate and releases the lock so the next person can pull.
+- **`/keel-connect` — once per folder.** Records *which* project this folder is. No lock. You always run this yourself.
+- **`/keel-map` · `/keel-clarify` · `/keel-generate` · `/keel-review` — the work.** Each one **pulls at the start** (takes the lock, downloads the latest) and **pushes at the end** (runs the right gate, syncs the dashboards, releases the lock). You just run the work skill; checkout is handled.
+- **`/keel-pull` · `/keel-push` — escape hatches.** Manual checkout for the cases the skills don't cover: re-taking a lock after a `409`, inspecting current state, or pushing files you edited by hand. `/keel-push` takes a phase (`map` | `generate` | `review`).
 
 > Tip: steps 2–9 happen entirely in your agent. You only need the web app to *create* the project (step 0), make the Recommended decisions, view the team dashboards, and export the final PDF.
 
-> **When is it locked?** From `/keel-pull` until `/keel-push` (or `keel_release`, or a ~15-min idle auto-free). While you hold it, everyone else is view-only — that's how parallel editing is prevented. If you stop mid-session without pushing, release so you don't block teammates.
+> **When is it locked?** From a pull until the matching push (or `keel_release`, or a ~15-min idle auto-free) — and since each work skill pulls then pushes, the lock is now typically held only for the duration of that one skill. While you hold it, everyone else is view-only. If you stop mid-skill or hold it by hand without pushing, release so you don't block teammates.
 
 > **POC note:** `/keel-pull` and `/keel-push` use the same server logic as the web app's *Pull & lock* / *Push* / *Release* buttons. There's no automatic lease heartbeat over MCP yet, so a long idle session can lose its lock (~15 min) — if a later `/keel-push` returns `409`, just `/keel-pull` again and push. Per-user attribution of agent actions in Activity is also still on the roadmap; web actions are already attributed.
 

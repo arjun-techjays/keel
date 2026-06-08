@@ -124,8 +124,17 @@ def parse_questions(engagement: str) -> list[dict]:
 
 
 def parse_block_count(engagement: str) -> int:
+    """Count genuine [BLOCK] question lines — those tagged [BLOCK] that also carry
+    a dimension/question ID. A bare "[BLOCK] remaining: 0" summary line has no ID
+    and must not count, or the gate false-positives on the sentence that reports
+    zero blockers."""
     text = _read(os.path.join(engagement, "discovery", "open-questions.md"))
-    return text.count("[BLOCK]") if text else 0
+    if not text:
+        return 0
+    return sum(
+        1 for ln in text.splitlines()
+        if "[BLOCK]" in ln and ID_RE.search(ln)
+    )
 
 
 def parse_review(engagement: str) -> dict | None:
@@ -169,7 +178,11 @@ def ingest_generate(sb, project_id: str, engagement: str) -> dict:
     con = _constitution()
     dims = parse_dimensions(engagement, con)
     qs = parse_questions(engagement)
-    blocks = parse_block_count(engagement)
+    # Derive the block count from the parsed (ID-keyed, de-duplicated) questions
+    # so it can never diverge from open_questions: a blocker is a question still
+    # open AND tagged [BLOCK]. A resolved/assumed/excluded question never blocks,
+    # and non-question text mentioning "[BLOCK]" is ignored (no ID → not a question).
+    blocks = sum(1 for q in qs if q.get("tag") == "BLOCK" and q["disposition"] in ("unanswered", "partial"))
 
     if dims:
         sb.table("dimensions").upsert(

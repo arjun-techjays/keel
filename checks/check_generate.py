@@ -300,12 +300,24 @@ def _covered_dims(engagement: str):
     return covered
 
 
+# A genuine blocking question is a line tagged [BLOCK] that ALSO carries a
+# dimension/question ID (DAT-07, RAID-A, …). Summary/legend lines that merely
+# mention the token — e.g. "**[BLOCK] remaining: 0** — gate unlocked" — carry no
+# ID and must not count, or the gate false-positives on the very sentence that
+# reports zero blockers.
+_BLOCK_ID_RE = re.compile(r"\b([A-Z]{3}-\d{2}|RAID-[ADRQ])\b")
+
+
 def _block_count(engagement: str):
     p = os.path.join(engagement, "discovery", "open-questions.md")
     if not os.path.isfile(p):
         return None
+    n = 0
     with open(p, encoding="utf-8") as fh:
-        return fh.read().count("[BLOCK]")
+        for ln in fh:
+            if "[BLOCK]" in ln and _BLOCK_ID_RE.search(ln):
+                n += 1
+    return n
 
 
 def main(argv):
