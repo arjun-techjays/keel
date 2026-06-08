@@ -146,15 +146,25 @@ def get_deliverable(project_id: str, n: int) -> str | None:
     if not fname:
         return None
     sb = admin()
-    snaps = (
-        sb.table("snapshots").select("storage_path")
+    # Prefer the latest *render's* snapshot (the last actual generate), so a later
+    # map/clarify sync — which has no deliverables/ — doesn't blank the Pack tab.
+    # Fall back to the latest snapshot if no render has been recorded.
+    rnd = (
+        sb.table("renders").select("storage_path")
         .eq("project_id", project_id).order("version", desc=True).limit(1).execute().data
     )
-    if not snaps:
+    path = rnd[0]["storage_path"] if rnd else None
+    if not path:
+        snaps = (
+            sb.table("snapshots").select("storage_path")
+            .eq("project_id", project_id).order("version", desc=True).limit(1).execute().data
+        )
+        path = snaps[0]["storage_path"] if snaps else None
+    if not path:
         return None
     try:
         r = httpx.get(
-            f"{settings.supabase_url}/storage/v1/object/snapshots/{snaps[0]['storage_path']}",
+            f"{settings.supabase_url}/storage/v1/object/snapshots/{path}",
             headers=_storage_headers(), timeout=60,
         )
         r.raise_for_status()
