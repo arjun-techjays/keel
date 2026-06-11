@@ -1,7 +1,7 @@
 """REST checkout (JWT auth). Thin wrappers over checkout_core, which is shared
 with the MCP tools (PAT auth)."""
 
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from fastapi import APIRouter, Body, Depends, File, HTTPException, UploadFile
 
 from ..auth import User, get_current_user
 from .. import checkout_core as core
@@ -34,6 +34,16 @@ def release(project_id: str, user: User = Depends(get_current_user)):
 @router.post("/force-release")
 def force_release(project_id: str, user: User = Depends(get_current_user)):
     return _result(core.do_force_release(user.id, project_id))
+
+
+@router.delete("")
+def delete_project(
+    project_id: str,
+    confirm: str = Body(..., embed=True),
+    user: User = Depends(get_current_user),
+):
+    """Owner/admin only; `confirm` must equal the project name exactly."""
+    return _result(core.do_delete_project(user.id, project_id, confirm))
 
 
 @router.post("/push")

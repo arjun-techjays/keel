@@ -44,6 +44,18 @@ export async function forceReleaseProject(projectId: string): Promise<SvcResult>
   return r;
 }
 
+// Hard delete — owner/admin only. The service re-verifies the role AND that
+// `confirm` equals the project name exactly; the UI gate alone is not trusted.
+export async function deleteProject(projectId: string, confirm: string): Promise<SvcResult> {
+  const r = await callService(`/projects/${projectId}`, {
+    method: "DELETE",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ confirm }),
+  });
+  if (r.ok) revalidatePath("/projects");
+  return r;
+}
+
 // Editor management (RLS enforces: any editor adds, creator/admin removes).
 export async function addEditor(projectId: string, userId: string): Promise<{ error?: string }> {
   const supabase = await createClient();

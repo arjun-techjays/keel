@@ -11,6 +11,7 @@ import { StatSurface } from "@/components/keel/stat-surface";
 import { PhasePipeline } from "@/components/keel/phase-pipeline";
 import { CoverageBar } from "@/components/keel/coverage-bar";
 import { DispositionPill } from "@/components/keel/disposition-pill";
+import { DeleteProject } from "@/components/keel/delete-project";
 import type { Phase } from "@/lib/mock";
 
 const tagStyle: Record<string, string> = {
@@ -216,6 +217,10 @@ export default async function WorkspacePage({ params }: { params: Promise<{ id: 
             </div>
           </div>
         </div>
+
+        {/* Danger zone — owner (created_by) or admin only; the service
+            re-verifies the role and the typed confirmation. */}
+        {canManage && <DeleteProject projectId={id} projectName={p.name} />}
       </div>
     </div>
   );

@@ -126,6 +126,71 @@ def do_force_release(admin_user_id: str, project_id: str) -> dict:
     return {"ok": True}
 
 
+def do_delete_project(user_id: str, project_id: str, confirm: str) -> dict:
+    """Hard-delete a project: storage objects first, then the project row (every
+    dependent table cascades). Allowed only for the project owner (created_by)
+    or an admin, and only when `confirm` matches the project name exactly —
+    the type-to-confirm check is enforced HERE, not just in the UI."""
+    sb = admin()
+    proj = (
+        sb.table("projects").select("id,name,created_by")
+        .eq("id", project_id).limit(1).execute().data
+    )
+    if not proj:
+        return {"ok": False, "status": 404, "error": "Project not found"}
+    name = proj[0]["name"]
+
+    prof = sb.table("profiles").select("role").eq("id", user_id).limit(1).execute().data
+    is_admin = bool(prof and prof[0].get("role") == "admin")
+    if not is_admin and proj[0].get("created_by") != user_id:
+        return {"ok": False, "status": 403,
+                "error": "Only the project owner or an admin can delete a project"}
+
+    if (confirm or "").strip() != name:
+        return {"ok": False, "status": 400,
+                "error": "Confirmation text does not match the project name"}
+
+    # Storage cleanup — gather paths BEFORE the rows cascade away. Best-effort:
+    # an orphaned object is recoverable noise; a half-deleted project is not.
+    snap_paths = [
+        r["storage_path"]
+        for r in (sb.table("snapshots").select("storage_path")
+                  .eq("project_id", project_id).execute().data or [])
+        if r.get("storage_path")
+    ]
+    snap_paths += [
+        r["storage_path"]
+        for r in (sb.table("renders").select("storage_path")
+                  .eq("project_id", project_id).execute().data or [])
+        if r.get("storage_path")
+    ]
+    upload_paths = [
+        r["answer_file_path"]
+        for r in (sb.table("questions").select("answer_file_path")
+                  .eq("project_id", project_id).execute().data or [])
+        if r.get("answer_file_path")
+    ]
+    for bucket, paths in (("snapshots", snap_paths), ("uploads", upload_paths)):
+        if paths:
+            try:
+                sb.storage.from_(bucket).remove(sorted(set(paths)))
+            except Exception:
+                pass  # orphaned objects only; the rows below still go
+
+    sb.table("projects").delete().eq("id", project_id).execute()
+
+    # The project's activity rows cascade with it — record a tombstone without
+    # the FK so the deletion itself stays auditable.
+    try:
+        sb.table("activity").insert({
+            "actor_id": user_id, "action": "delete_project", "target": name,
+            "meta": {"project_id": project_id, "by_admin": is_admin},
+        }).execute()
+    except Exception:
+        pass
+    return {"ok": True, "deleted": name}
+
+
 def _storage_headers() -> dict:
     key = settings.supabase_service_key
     return {"apikey": key, "Authorization": f"Bearer {key}"}
