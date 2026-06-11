@@ -19,8 +19,8 @@ Read **`constitution.md`** first (project root, then kit root). Clarify lives an
 
 ## Where files live
 
-- Reads: `discovery/open-questions.md`, `discovery/discovery-plan.md`, `.keel/coverage-map.md`. Round material, if file-based, lives in `discovery/answers/` (create it if absent).
-- Writes: `.keel/decision-log.md` (the audit trail) and the updated `discovery/open-questions.md`.
+- Reads: `discovery/open-questions.md`, `.keel/questions.md` (the RAID-Q ledger — the machine view of the same register), `discovery/discovery-plan.md`, `.keel/coverage-map.md`. Round material, if file-based, lives in `discovery/answers/` (create it if absent).
+- Writes: `.keel/decision-log.md` (the audit trail), the updated `discovery/open-questions.md`, **and the updated `.keel/questions.md`** — every disposition this round lands in BOTH: the prose register for humans, the ledger row (Disposition cell) for the gate and the dashboard. A question closed only in prose is still open as far as the machinery is concerned.
 
 ## Inputs
 
@@ -88,7 +88,7 @@ Process questions in **discipline order**, pausing after each discipline to prin
 
 **8 · Update the profile.** If an answer changes a profile axis (e.g. a language decision), update it in `.keel/coverage-map.md`'s profile block and note it — some dimensions will flip Required↔N-A on the next `keel-map` re-score.
 
-**9 · Write `.keel/decision-log.md` and the updated `discovery/open-questions.md`. Then report the round** in the terminal:
+**9 · Write `.keel/decision-log.md`, the updated `discovery/open-questions.md`, and the updated `.keel/questions.md` (ledger rows: dispositions flipped, new/sharpened questions appended, superseded rows marked `SUPERSEDED`). Then report the round** in the terminal:
 - a **per-discipline resolution table** (closed / assumed / excluded / deferred / T&M / still-open this round);
 - the **unworked disciplines** (filtered out in 1b): open/blocking counts + the suggested owner role for each;
 - the **[BLOCK] remaining** — *computed from the file, not estimated*;

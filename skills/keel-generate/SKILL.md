@@ -17,12 +17,12 @@ This skill **manages checkout itself**: at the start (step 0) it calls `keel_pul
 
 ## Where files live
 
-- Reads: `discovery/open-questions.md` (gate check), `.keel/coverage-map.md` (re-scored), `.keel/decision-log.md`, `.keel/instance-inventory.md` (**read-only** — keel-map owns it; generate renders and reconciles it, never edits it), and the evidence corpus.
+- Reads: `.keel/questions.md` (gate check — the RAID-Q ledger; `discovery/open-questions.md` is the pre-ledger fallback), `.keel/coverage-map.md` (re-scored), `.keel/decision-log.md`, `.keel/instance-inventory.md` (**read-only** — keel-map owns it; generate renders and reconciles it, never edits it), and the evidence corpus.
 - Writes: the **six documents of the pack as six separate files** in `deliverables/` (create the folder if absent). These are the first user-facing outputs — they belong in the visible deliverables folder, not inside `.keel/`. Also writes **`.keel/scenario-coverage.md`** — the machine-readable `SCO-08` scenario ledger (internal machinery; see *The scenario ledger* below).
 
 ## Gate — refuse if not met
 
-Read `discovery/open-questions.md`. **If any [BLOCK] remains, STOP** — do not write the pack; point back to `keel-clarify` and report the count. Also count undecided Recommended dimensions and report them as a freeze prerequisite (they do not stop generation, but the pack stays a DRAFT until they're decided).
+Read `.keel/questions.md` (the RAID-Q ledger; fall back to `discovery/open-questions.md` on a pre-ledger engagement). **If any row has Tag = BLOCK and Disposition = OPEN, STOP** — do not write the pack; point back to `keel-clarify` and report the count. Also count undecided Recommended dimensions and report them as a freeze prerequisite (they do not stop generation, but the pack stays a DRAFT until they're decided).
 
 ## The standard — applied to the OUTPUT
 

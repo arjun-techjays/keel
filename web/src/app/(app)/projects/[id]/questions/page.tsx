@@ -11,11 +11,23 @@ const tagStyle: Record<string, string> = {
   PARTIAL: "text-partial bg-partial-tint",
 };
 const isClosed = (k: string) => ["answered", "assumption", "deferred", "excluded"].includes(k);
-const disciplineOf = (qId: string) => (qId.startsWith("RAID") ? "RAID" : qId.split("-")[0]);
 
 type Q = {
   id: string; q_id: string; text: string; tag: string | null;
   disposition: string; disposition_label: string | null; answer_text: string | null;
+  dims: string[] | null;
+};
+
+// Discipline routing: questions carry their own Q-ids (OQ-01, RV1-02, …), so
+// the q_id prefix is only trusted when it IS a constitution discipline;
+// otherwise route by the first dimension the question concerns (dims column,
+// from the questions ledger).
+const prefixOf = (id: string) => (id.startsWith("RAID") ? "RAID" : id.split("-")[0]);
+const disciplineOf = (q: Q) => {
+  const pre = prefixOf(q.q_id);
+  if (DISCIPLINE_ORDER.includes(pre)) return pre;
+  const dim = q.dims?.[0];
+  return dim ? prefixOf(dim) : pre;
 };
 
 export default async function QuestionsPage({
@@ -34,15 +46,15 @@ export default async function QuestionsPage({
 
   // Group by discipline (derived from the constitution ID prefix), constitution order
   // first, then any unknown prefixes alphabetically — so nothing is silently dropped.
-  const known = DISCIPLINE_ORDER.filter((d) => all.some((q) => disciplineOf(q.q_id) === d));
-  const extra = [...new Set(all.map((q) => disciplineOf(q.q_id)))]
+  const known = DISCIPLINE_ORDER.filter((d) => all.some((q) => disciplineOf(q) === d));
+  const extra = [...new Set(all.map((q) => disciplineOf(q)))]
     .filter((d) => !DISCIPLINE_ORDER.includes(d))
     .sort();
   const groups = [...known, ...extra].map((dId) => ({
     id: dId,
     name: disciplineName(dId),
     questions: all
-      .filter((q) => disciplineOf(q.q_id) === dId)
+      .filter((q) => disciplineOf(q) === dId)
       .sort((a, b) => Number(isClosed(a.disposition)) - Number(isClosed(b.disposition)) || a.q_id.localeCompare(b.q_id)),
   }));
 
@@ -86,7 +98,7 @@ export default async function QuestionsPage({
             <div className="flex flex-1 flex-col rounded-[14px] border border-hairline bg-white">
               <div className="flex items-center justify-between border-b border-hairline px-7 py-3.5">
                 <span className="text-[13px] font-medium text-muted-ink">
-                  {disciplineName(disciplineOf(selected.q_id))} · {disciplineOf(selected.q_id)}
+                  {disciplineName(disciplineOf(selected))} · {disciplineOf(selected)}
                 </span>
                 <DispositionPill kind={selected.disposition as Disposition} label={selected.disposition_label ?? "Open"} />
               </div>
@@ -102,6 +114,20 @@ export default async function QuestionsPage({
                     )}
                   </div>
                   <h2 className="font-display text-xl font-semibold leading-snug tracking-[-0.01em] text-ink">{selected.text}</h2>
+                  {selected.dims && selected.dims.length > 0 && (
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <span className="text-[11px] font-semibold uppercase tracking-[0.06em] text-faint">Dimensions</span>
+                      {selected.dims.map((d) => (
+                        <Link
+                          key={d}
+                          href={`/projects/${id}/coverage?dim=${d}`}
+                          className="rounded bg-panel px-1.5 py-0.5 font-mono text-[11px] font-semibold text-muted-ink hover:text-ink"
+                        >
+                          {d}
+                        </Link>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
                 {selected.answer_text ? (

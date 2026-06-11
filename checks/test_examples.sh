@@ -51,6 +51,9 @@ expected_gen=(
   "fails the reason-quality floor"                          # Part B reason floor
   "must reference a RAID-A item"                            # Law 4 link
   "is never named in 2-scope.md"                            # SCO-08 ledger↔prose
+  "unknown disposition"                                     # RAID-Q ledger vocabulary
+  "duplicate ledger row"                                    # RAID-Q unique Q-ids
+  "[BLOCK] open question(s)"                                # blockers counted from the ledger
 )
 for s in "${expected_gen[@]}"; do
   if printf '%s' "$gen_out" | grep -qF "$s"; then

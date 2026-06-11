@@ -12,8 +12,11 @@ Validates deliverables/ against the constitution's Part F structure + crosswalk:
   5. Self-containment (Law 12): no statement defers its substance to an external
      document ("per §4.4 of the RFP") — external citations only on Source lines.
      Fails in the binding docs (2, 3, 6); warns elsewhere.
-  6. Gate honesty: if open-questions still has [BLOCK], or the instance
-     inventory still has OPEN rows, the pack must say DRAFT.
+  6. Gate honesty: if the questions ledger (.keel/questions.md) still has
+     BLOCK+OPEN rows (fallback: [BLOCK] lines in the prose register), or the
+     instance inventory still has OPEN rows, the pack must say DRAFT. The
+     ledger is also validated (disposition vocabulary, duplicate Q-ids,
+     dimension references).
   7. SCO-08 / Law 11: the scenario ledger reconciles (statuses, provenance,
      RAID-A links, no SILENT, all three classes per module, reasons carry
      their grounds) and every ledger module is named in the scope doc.
@@ -69,6 +72,17 @@ MIN_REASON_LEN = 15
 INST_STATUS = {"SPECIFIED", "ASSUMPTION", "EXCLUDED", "DEFERRED", "OPEN"}
 CW_STATUS = {"CONFIRMED", "ASSUMED", "OPEN"}
 CW_MARK = "__closed-world__"
+
+# --- RAID-Q: the questions ledger contract -----------------------------------
+# keel-map regenerates .keel/questions.md — one row per question:
+# | Q-id | Dimensions | Tag | Disposition | Question | Provenance |.
+# It is the machine-readable twin of discovery/open-questions.md (the prose
+# register stays the human view). The gate and the dashboard ingest count
+# blockers from the LEDGER — a [BLOCK] in prose with no ledger row is invisible
+# by design, so the reconcile rule in keel-map matters.
+Q_DISP = {"OPEN", "CLOSED", "ASSUMPTION", "EXCLUDED", "DEFERRED", "TM", "T&M",
+          "SUPERSEDED"}
+Q_TAGS = {"BLOCK", "ASSUME", "TM", "T&M", "FUTURE", "", "—", "-"}
 
 # --- SCO-08 / Law 11: the scenario-coverage ledger contract -----------------
 # keel-generate emits .keel/scenario-coverage.md — one row per module × scenario
@@ -183,10 +197,19 @@ def run(engagement: str, con_override: str | None = None) -> Report:
     if "SCO-09" in c.dims:
         open_instances = _check_instances(r, engagement, dim_docs, texts)
 
-    # 6. gate honesty — [BLOCK] questions and OPEN inventory rows both gate
-    blocks = _block_count(engagement)
+    # 6. gate honesty — [BLOCK] questions and OPEN inventory rows both gate.
+    # The questions ledger (.keel/questions.md) is authoritative when present;
+    # the prose register is the pre-ledger fallback.
+    blocks = _check_questions(r, engagement)
     if blocks is None:
-        r.warn("no discovery/open-questions.md found — cannot verify the gate")
+        blocks = _block_count(engagement)
+        if blocks is not None:
+            r.note("no .keel/questions.md — pre-ledger engagement; counted "
+                   "[BLOCK] from the prose register (re-run keel-map to emit "
+                   "the ledger)")
+    if blocks is None:
+        r.warn("no questions ledger or discovery/open-questions.md found — "
+               "cannot verify the gate")
     elif blocks + open_instances > 0:
         is_draft = any("draft" in t for t in texts.values())
         parts = []
@@ -459,6 +482,49 @@ def _check_instances(r: Report, engagement: str,
     r.note(f"SCO-09: instance inventory covers {len(classes)} class(es), "
            f"{len(rows)} row(s); {open_rows} OPEN")
     return open_rows
+
+
+def _check_questions(r: Report, engagement: str) -> int | None:
+    """Reconcile .keel/questions.md (the RAID-Q ledger). Returns the count of
+    blocking rows (Tag = BLOCK and Disposition = OPEN), or None when the ledger
+    is absent (pre-ledger engagement). The dashboard ingests the same ledger —
+    this is what keeps the Questions tab and the gate agreeing."""
+    rows = parse_ledger(os.path.join(engagement, ".keel", "questions.md"))
+    if rows is None:
+        return None
+    blocks = 0
+    no_dim = 0
+    seen: set[str] = set()
+    for cells in rows:
+        # | Q-id | Dimensions | Tag | Disposition | Question | Provenance |
+        qid = cells[0]
+        dims_cell = cells[1] if len(cells) > 1 else ""
+        tag = (cells[2] if len(cells) > 2 else "").strip().upper()
+        disp = (cells[3] if len(cells) > 3 else "").strip().upper()
+
+        if qid in seen:
+            r.fail(f"RAID-Q: duplicate ledger row for question '{qid}'")
+        seen.add(qid)
+        if disp not in Q_DISP:
+            r.fail(f"RAID-Q: question '{qid}' has unknown disposition "
+                   f"'{disp}' (expected {sorted(Q_DISP)})")
+            continue
+        if tag not in Q_TAGS:
+            r.warn(f"RAID-Q: question '{qid}' has unrecognised tag '{tag}'")
+        if disp != "SUPERSEDED" and not DIM_ID_RE.search(dims_cell) \
+                and "RAID-" not in dims_cell:
+            # the OQ-07 hole: a question no dimension can claim is invisible
+            # to coverage routing and to the dashboard's discipline grouping
+            no_dim += 1
+            r.warn(f"RAID-Q: question '{qid}' cites no constitution dimension "
+                   f"— it cannot be routed to a discipline or a coverage gap")
+        if tag == "BLOCK" and disp == "OPEN":
+            blocks += 1
+
+    r.note(f"RAID-Q: questions ledger has {len(rows)} row(s); "
+           f"{blocks} blocking (BLOCK + OPEN)"
+           + (f"; {no_dim} with no dimension ref" if no_dim else ""))
+    return blocks
 
 
 def _dim_row(engagement: str, dim: str) -> str | None:

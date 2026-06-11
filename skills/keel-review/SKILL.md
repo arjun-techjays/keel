@@ -91,7 +91,8 @@ A review finding is just a **late-discovered open item** — and Keel already ha
 - give it an ID and tag it **`raised-by: keel-review, round N`** (so `map` preserves it on re-score and provenance is clear);
 - carry its **route** (A or B), its location (doc + Part F section), and its **suggested disposition** — the ready-to-paste exclusion / definition / cap the report already wrote;
 - mark Route-A findings (owed/Partial) and any High as **[BLOCK]** so the gate reflects them;
-- **supersede, never parallel.** When the finding *tightens an existing question* — open, or closed on a vague answer — the new question carries `supersedes: <Q-id>` and the original is marked `superseded-by: <new id>`, removing it from the active set. The lead must never be able to re-answer the vague original and defeat the sharpened finding: one gap, one active question, and it is the sharp one.
+- **supersede, never parallel.** When the finding *tightens an existing question* — open, or closed on a vague answer — the new question carries `supersedes: <Q-id>` and the original is marked `superseded-by: <new id>`, removing it from the active set. The lead must never be able to re-answer the vague original and defeat the sharpened finding: one gap, one active question, and it is the sharp one;
+- **mirror every change into `.keel/questions.md`** (the RAID-Q ledger): one new row per finding-question (Dimensions = the dimension IDs it concerns, Tag = BLOCK for Route-A/High, Disposition = OPEN), and flip superseded originals to `SUPERSEDED`. The gate and the dashboard read the ledger — a finding that exists only in the prose register is invisible to both.
 
 This makes `clarify` the single disposition path for *every* gap, whether `map` found it or `review` did — one register, one decision-log writer, full traceability. The `scope-risk-report.md` remains the human-readable adversarial narrative; `open-questions.md` is the machine-actionable feed.
 

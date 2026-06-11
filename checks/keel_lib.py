@@ -124,8 +124,8 @@ def _strip_md(s: str) -> str:
 def parse_ledger(path: str) -> list[list[str]] | None:
     """Parse a .keel machine ledger (a markdown table) into trimmed cell rows,
     or None if the file is absent. Header and separator rows are dropped.
-    Used for .keel/scenario-coverage.md (SCO-08) and
-    .keel/instance-inventory.md (SCO-09)."""
+    Used for .keel/scenario-coverage.md (SCO-08), .keel/instance-inventory.md
+    (SCO-09), and .keel/questions.md (RAID-Q)."""
     if not os.path.isfile(path):
         return None
     out: list[list[str]] = []
@@ -136,7 +136,8 @@ def parse_ledger(path: str) -> list[list[str]] | None:
             cells = [c.strip() for c in ln.strip().strip("|").split("|")]
             if len(cells) < 4:
                 continue
-            if cells[0].lower() in ("module", "class") or set(cells[0]) <= set("-: "):
+            if cells[0].lower() in ("module", "class", "q-id", "id") \
+                    or set(cells[0]) <= set("-: "):
                 continue
             out.append(cells)
     return out

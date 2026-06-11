@@ -126,7 +126,61 @@ def _disposition(line: str) -> tuple[str, str, str | None]:
     return "unanswered", "Open", None
 
 
+# Ledger disposition vocabulary -> DB disposition enum. SUPERSEDED rows are
+# terminal tombstones (the active question is the successor) and are not
+# ingested at all.
+_LEDGER_DISP = {
+    "OPEN": ("unanswered", "Open"),
+    "CLOSED": ("answered", "Answered"),
+    "ASSUMPTION": ("assumption", "Assumption"),
+    "EXCLUDED": ("excluded", "Excluded"),
+    "DEFERRED": ("deferred", "Deferred"),
+    "TM": ("deferred", "T&M"),
+    "T&M": ("deferred", "T&M"),
+}
+
+
+def _questions_from_ledger(engagement: str) -> list[dict] | None:
+    """Parse .keel/questions.md — the machine-readable RAID-Q ledger keel-map
+    regenerates each run (| Q-id | Dimensions | Tag | Disposition | Question |
+    Provenance |). Returns None when the ledger is absent (pre-ledger
+    engagement -> caller falls back to the prose heuristic)."""
+    import sys
+
+    checks = os.path.abspath(settings.checks_dir)
+    if checks not in sys.path:
+        sys.path.insert(0, checks)
+    from keel_lib import parse_ledger  # noqa: E402
+
+    rows = parse_ledger(os.path.join(engagement, ".keel", "questions.md"))
+    if rows is None:
+        return None
+    qs: dict[str, dict] = {}
+    for cells in rows:
+        if len(cells) < 5:
+            continue
+        qid = cells[0]
+        disp_key = cells[3].strip().upper()
+        if disp_key == "SUPERSEDED":
+            continue
+        disp, label = _LEDGER_DISP.get(disp_key, ("unanswered", "Open"))
+        tag = cells[2].strip().upper()
+        qs[qid] = {
+            "q_id": qid,
+            "text": cells[4].strip() or qid,
+            "tag": "BLOCK" if tag == "BLOCK" else None,
+            "disposition": disp,
+            "disposition_label": label,
+            "dims": ID_RE.findall(cells[1]),
+        }
+    return list(qs.values())
+
+
 def parse_questions(engagement: str) -> list[dict]:
+    ledger = _questions_from_ledger(engagement)
+    if ledger is not None:
+        return ledger
+    # Fallback: pre-ledger engagements — heuristic parse of the prose register.
     text = _read(os.path.join(engagement, "discovery", "open-questions.md"))
     if text is None:
         return []
@@ -154,6 +208,7 @@ def parse_questions(engagement: str) -> list[dict]:
             "tag": tag,
             "disposition": disp,
             "disposition_label": label,
+            "dims": ID_RE.findall(ln),
         }
     return list(qs.values())
 
