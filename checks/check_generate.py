@@ -9,7 +9,17 @@ Validates deliverables/ against the constitution's Part F structure + crosswalk:
   3. Every Covered dimension (from coverage-map) is rendered into at least one
      of its mapped sections' documents (the crosswalk, inverted).
   4. No weasel words in the rendered pack (Doctrine Law 3).
-  5. Gate honesty: if open-questions still has [BLOCK], the pack must say DRAFT.
+  5. Self-containment (Law 12): no statement defers its substance to an external
+     document ("per §4.4 of the RFP") — external citations only on Source lines.
+     Fails in the binding docs (2, 3, 6); warns elsewhere.
+  6. Gate honesty: if open-questions still has [BLOCK], or the instance
+     inventory still has OPEN rows, the pack must say DRAFT.
+  7. SCO-08 / Law 11: the scenario ledger reconciles (statuses, provenance,
+     RAID-A links, no SILENT, all three classes per module, reasons carry
+     their grounds) and every ledger module is named in the scope doc.
+  8. SCO-09 / Law 13: the instance inventory reconciles (statuses, RAID-A
+     links, closed-world rows per class) and every specified instance appears
+     by name in a document its host dimension's crosswalk maps to.
 
 Usage:  python3 check_generate.py <engagement-dir>
 Exit 0 = pass, 1 = failure(s).
@@ -18,7 +28,8 @@ import os
 import re
 import sys
 
-from keel_lib import (Report, find_constitution, parse_constitution)
+from keel_lib import (Report, find_constitution, parse_constitution,
+                      parse_ledger)
 
 DOC_FILES = {
     1: "1-executive-summary.md", 2: "2-scope.md",
@@ -31,6 +42,33 @@ WEASEL = [
     "intuitive", "as needed", "as required", "and so on", "etc.",
     "state-of-the-art", "world-class", "best-in-class", "cutting-edge",
 ]
+
+# --- Law 12: self-containment — external back-references as content ----------
+# A deferral verb followed (within the same clause) by an external-document
+# target is a body that delegates its substance outside the pack. Internal
+# cross-refs (F-section IDs, "RAID Register") never match the target
+# alternation, so the pointer-not-duplicate doctrine (F2.15) is unaffected.
+BACKREF_RE = re.compile(
+    r"(?i)\b(per|as\s+per|see|refer(?:\s+to)?|defined\s+in|described\s+in|"
+    r"specified\s+in|detailed\s+in|outlined\s+in|according\s+to|"
+    r"in\s+accordance\s+with|pursuant\s+to)\b[^.\n]{0,60}?"
+    r"(§\s*\d|\brfp\b|\bsow\b|\bmsa\b|appendix|attachment|exhibit|addendum)")
+# A provenance line — the one place an external citation is welcome (suffix).
+PROV_LINE_RE = re.compile(r"(?i)^\s*[*>\-|#\s]*\s*(source|provenance|evidence)\s*[:—–]")
+# The binding documents, where a Law 12 hit is a failure (elsewhere: warning).
+BINDING_DOCS = {2, 3, 6}
+
+# --- reason quality (Part B): a reason must carry its grounds -----------------
+STOCK_REASONS = {"not applicable", "n/a", "na", "none", "no reason",
+                 "out of scope", "n-a", "not needed", "not required"}
+MIN_REASON_LEN = 15
+
+# --- SCO-09 / Law 13: the instance-inventory ledger contract -----------------
+# keel-map owns .keel/instance-inventory.md — one row per named instance per
+# class, plus one __CLOSED-WORLD__ row per class ("are these ALL the X's?").
+INST_STATUS = {"SPECIFIED", "ASSUMPTION", "EXCLUDED", "DEFERRED", "OPEN"}
+CW_STATUS = {"CONFIRMED", "ASSUMED", "OPEN"}
+CW_MARK = "__closed-world__"
 
 # --- SCO-08 / Law 11: the scenario-coverage ledger contract -----------------
 # keel-generate emits .keel/scenario-coverage.md — one row per module × scenario
@@ -97,6 +135,12 @@ def run(engagement: str, con_override: str | None = None) -> Report:
                 r.fail(f"{DOC_FILES[doc]}: missing Part F section {sid} "
                        f"({s.title})")
 
+    # the crosswalk, inverted: dim -> docs that can render it (checks 3 and 8)
+    dim_docs: dict[str, set[int]] = {}
+    for s in c.sections.values():
+        for d in s.renders_from:
+            dim_docs.setdefault(d, set()).add(s.doc)
+
     # 3. covered-dimension rendering (needs an ID-bearing coverage map)
     covered = _covered_dims(engagement)
     if covered is None:
@@ -104,11 +148,6 @@ def run(engagement: str, con_override: str | None = None) -> Report:
                "skipping covered→section rendering check. Re-run keel-map to "
                "produce an ID-keyed coverage map.")
     else:
-        # invert the crosswalk: dim -> docs that can render it
-        dim_docs: dict[str, set[int]] = {}
-        for s in c.sections.values():
-            for d in s.renders_from:
-                dim_docs.setdefault(d, set()).add(s.doc)
         for dim in sorted(covered):
             docs = dim_docs.get(dim)
             if not docs:
@@ -126,31 +165,68 @@ def run(engagement: str, con_override: str | None = None) -> Report:
             if n:
                 r.warn(f"{DOC_FILES[doc]}: weasel term '{w}' ×{n} (Law 3)")
 
-    # 5. gate honesty
+    # 5. self-containment — Law 12 back-reference linter
+    for doc, text in texts.items():
+        for i, ln in enumerate(text.splitlines(), 1):
+            if PROV_LINE_RE.match(ln):
+                continue                      # a Source:/Provenance: suffix line
+            m = BACKREF_RE.search(ln)
+            if not m:
+                continue
+            msg = (f"{DOC_FILES[doc]}:{i}: external back-reference as content "
+                   f"— '{ln.strip()[:80]}' (Law 12: spell the rule out; cite "
+                   f"only on a Source: line)")
+            (r.fail if doc in BINDING_DOCS else r.warn)(msg)
+
+    # 8 runs before 6 so OPEN inventory rows feed the gate-honesty verdict.
+    open_instances = 0
+    if "SCO-09" in c.dims:
+        open_instances = _check_instances(r, engagement, dim_docs, texts)
+
+    # 6. gate honesty — [BLOCK] questions and OPEN inventory rows both gate
     blocks = _block_count(engagement)
     if blocks is None:
         r.warn("no discovery/open-questions.md found — cannot verify the gate")
-    elif blocks > 0:
+    elif blocks + open_instances > 0:
         is_draft = any("draft" in t for t in texts.values())
-        msg = (f"{blocks} [BLOCK] open question(s) remain")
+        parts = []
+        if blocks:
+            parts.append(f"{blocks} [BLOCK] open question(s)")
+        if open_instances:
+            parts.append(f"{open_instances} OPEN instance-inventory row(s)")
+        msg = " and ".join(parts) + " remain"
         (r.note if is_draft else r.fail)(
             msg + (" — pack marked DRAFT ✅" if is_draft
                    else " but pack is NOT marked DRAFT"))
     else:
-        r.note("gate: 0 [BLOCK] — generate gate green")
+        r.note("gate: 0 [BLOCK], 0 OPEN instances — generate gate green")
 
-    # 6. SCO-08 scenario coverage — mechanical (Law 11)
+    # 7. SCO-08 scenario coverage — mechanical (Law 11)
     if 2 in texts:          # only when a scope document was generated
-        _check_scenarios(r, engagement)
+        _check_scenarios(r, engagement, texts)
 
     return r
 
 
-def _check_scenarios(r: Report, engagement: str) -> None:
+def _reason_floor(evid: str) -> str | None:
+    """Part B reason-quality floor: a reason must carry its grounds. Returns a
+    deficiency description, or None if the floor is met. A lexical floor only —
+    the real bar is review's job."""
+    e = evid.strip().rstrip(".").lower()
+    if e in STOCK_REASONS:
+        return f"'{evid}' states no grounds"
+    if len(e) < MIN_REASON_LEN:
+        return f"'{evid}' is too thin to carry its grounds"
+    return None
+
+
+def _check_scenarios(r: Report, engagement: str, texts: dict[int, str]) -> None:
     """Reconcile .keel/scenario-coverage.md: every in-scope module's happy /
     exception / edge class is either an EXAMPLE (with provenance), a disposition
-    (EXCLUDED / ASSUMPTION→RAID-A / NA-with-reason), or — forbidden — SILENT."""
-    rows = _scenario_rows(engagement)
+    (EXCLUDED / ASSUMPTION→RAID-A / NA-with-reason), or — forbidden — SILENT.
+    Every ledger module must also be named in the rendered scope doc."""
+    rows = parse_ledger(os.path.join(engagement, ".keel",
+                                     "scenario-coverage.md"))
     if rows is None:
         r.fail("SCO-08: missing .keel/scenario-coverage.md — the scenario "
                "ledger is required to verify Law 11 mechanically "
@@ -177,6 +253,11 @@ def _check_scenarios(r: Report, engagement: str) -> None:
             if not evid:
                 r.fail(f"SCO-08: module '{mod}' marked N-A with no reason "
                        f"(Law 10)")
+            else:
+                thin = _reason_floor(evid)
+                if thin:
+                    r.fail(f"SCO-08: module '{mod}' N-A reason fails the "
+                           f"reason-quality floor — {thin} (Part B)")
             na_mods.add(mod)
             continue
 
@@ -198,9 +279,16 @@ def _check_scenarios(r: Report, engagement: str) -> None:
         elif status == "ASSUMPTION" and not RAIDA_RE.search(evid):
             r.fail(f"SCO-08: module '{mod}' {scen} ASSUMPTION must reference a "
                    f"RAID-A item (Law 4) — got '{evid or 'empty'}'")
-        elif status in ("NA", "EXCLUDED") and not evid:
+        elif status in ("NA", "EXCLUDED"):
             kind = "reason" if status == "NA" else "client acknowledgement"
-            r.fail(f"SCO-08: module '{mod}' {scen} {status} has no {kind}")
+            if not evid:
+                r.fail(f"SCO-08: module '{mod}' {scen} {status} has no {kind}")
+            else:
+                thin = _reason_floor(evid)
+                if thin:
+                    r.fail(f"SCO-08: module '{mod}' {scen} {status} {kind} "
+                           f"fails the reason-quality floor — {thin} (Part B: "
+                           f"reasons carry their grounds)")
 
         # cross-check EXAMPLE provenance against the registered asset manifest
         if status == "EXAMPLE" and manifest_ids:
@@ -225,6 +313,15 @@ def _check_scenarios(r: Report, engagement: str) -> None:
             r.fail(f"SCO-08: module '{mod}' is missing scenario class(es) "
                    f"{sorted(missing)}{crit} — a class left out is silence "
                    f"(Law 11)")
+
+    # the ledger must agree with the rendered prose: a module the scope doc
+    # never names is a ledger entry floating free of the pack (Law 11 ↔ Law 6)
+    scope_text = texts.get(2, "")
+    for mod in sorted(set(by_mod) | na_mods):
+        if mod.lower() not in scope_text:
+            r.fail(f"SCO-08: ledger module '{mod}' is never named in "
+                   f"{DOC_FILES[2]} — the ledger and the rendered scope "
+                   f"disagree on what the modules are")
 
     n = len(set(by_mod) | na_mods)
     r.note(f"SCO-08: scenario ledger covers {n} module(s) "
@@ -255,24 +352,128 @@ def _manifest_ids(engagement: str):
     return ids
 
 
-def _scenario_rows(engagement: str):
-    """Parse .keel/scenario-coverage.md into trimmed table-cell rows, or None
-    if the ledger is absent. Header and separator rows are dropped."""
-    p = os.path.join(engagement, ".keel", "scenario-coverage.md")
+def _check_instances(r: Report, engagement: str,
+                     dim_docs: dict[str, set[int]],
+                     texts: dict[int, str]) -> int:
+    """Reconcile .keel/instance-inventory.md (SCO-09 / Law 13): every named
+    instance is SPECIFIED (and rendered by name in a doc its host dimension
+    maps to), or carries a disposition; every class has exactly one
+    __CLOSED-WORLD__ row, answered or dispositioned. Returns the count of OPEN
+    rows (they feed the gate-honesty verdict)."""
+    rows = parse_ledger(os.path.join(engagement, ".keel",
+                                     "instance-inventory.md"))
+    sco09 = _dim_row(engagement, "SCO-09")
+    if rows is None:
+        if sco09 and "n-a" not in sco09 and " na " not in f" {sco09} ":
+            r.fail("SCO-09: missing .keel/instance-inventory.md — the instance "
+                   "inventory is required to verify Law 13 mechanically "
+                   "(keel-map owns it; keel-generate reconciles it)")
+        else:
+            r.note("SCO-09: no instance inventory and SCO-09 not active — "
+                   "skipping instance reconciliation")
+        return 0
+
+    open_rows = 0
+    cw_by_class: dict[str, int] = {}
+    classes: set[str] = set()
+    for cells in rows:
+        # | Class | Instance | Dimension(s) | Status | Evidence / disposition |
+        cls, inst = cells[0], cells[1]
+        dims_cell = cells[2] if len(cells) > 2 else ""
+        status = (cells[3] if len(cells) > 3 else "").strip().upper()
+        evid = cells[4] if len(cells) > 4 else ""
+        classes.add(cls)
+
+        if inst.strip().lower() == CW_MARK:
+            cw_by_class[cls] = cw_by_class.get(cls, 0) + 1
+            if status not in CW_STATUS:
+                r.fail(f"SCO-09: class '{cls}' closed-world row has unknown "
+                       f"status '{status}' (expected {sorted(CW_STATUS)})")
+            elif status == "CONFIRMED" and not evid:
+                r.fail(f"SCO-09: class '{cls}' closed-world CONFIRMED with no "
+                       f"provenance (Law 6)")
+            elif status == "ASSUMED" and not RAIDA_RE.search(evid):
+                r.fail(f"SCO-09: class '{cls}' closed-world ASSUMED must "
+                       f"reference a RAID-A item (Law 4) — got "
+                       f"'{evid or 'empty'}'")
+            elif status == "OPEN":
+                open_rows += 1
+            continue
+
+        if status not in INST_STATUS:
+            r.fail(f"SCO-09: '{cls}' / '{inst}' has unknown status "
+                   f"'{status}' (expected {sorted(INST_STATUS)})")
+            continue
+
+        if status == "OPEN":
+            open_rows += 1
+            continue
+        if status == "ASSUMPTION" and not RAIDA_RE.search(evid):
+            r.fail(f"SCO-09: instance '{inst}' ({cls}) ASSUMPTION must "
+                   f"reference a RAID-A item (Law 4) — got '{evid or 'empty'}'")
+        elif status in ("EXCLUDED", "DEFERRED") and not evid:
+            kind = ("client acknowledgement" if status == "EXCLUDED"
+                    else "target phase / T&M note")
+            r.fail(f"SCO-09: instance '{inst}' ({cls}) {status} has no {kind}")
+        elif status == "EXCLUDED":
+            thin = _reason_floor(evid)
+            if thin:
+                r.fail(f"SCO-09: instance '{inst}' ({cls}) EXCLUDED "
+                       f"acknowledgement fails the reason-quality floor — "
+                       f"{thin} (Part B)")
+        elif status == "SPECIFIED" and not evid:
+            r.fail(f"SCO-09: instance '{inst}' ({cls}) SPECIFIED with no "
+                   f"evidence/provenance (Law 6)")
+
+        # Law 13 teeth: the prose must actually carry each instance by name.
+        name = re.split(r"[(\[]", inst)[0].strip().lower()
+        if not name:
+            continue
+        if status == "SPECIFIED":
+            target_docs: set[int] = set()
+            for d in DIM_ID_RE.findall(dims_cell):
+                target_docs |= dim_docs.get(d, set())
+            search_docs = target_docs or set(texts)
+            if not any(name in texts.get(d, "") for d in search_docs):
+                where = (f"its target doc(s) {sorted(target_docs)}"
+                         if target_docs else "any document")
+                r.fail(f"SCO-09: SPECIFIED instance '{inst}' ({cls}) never "
+                       f"appears by name in {where} — specified in the ledger "
+                       f"but absent from the rendered pack (Law 13)")
+        elif status == "EXCLUDED":
+            if not (name in texts.get(2, "") or name in texts.get(6, "")):
+                r.warn(f"SCO-09: EXCLUDED instance '{inst}' ({cls}) is not "
+                       f"named in the scope exclusions or sign-off "
+                       f"acknowledgement (Law 1)")
+
+    for cls in sorted(classes):
+        n = cw_by_class.get(cls, 0)
+        if n == 0:
+            r.fail(f"SCO-09: class '{cls}' has no __CLOSED-WORLD__ row — "
+                   f"'are these ALL the {cls}?' was never answered or "
+                   f"dispositioned (Law 13)")
+        elif n > 1:
+            r.fail(f"SCO-09: class '{cls}' has {n} __CLOSED-WORLD__ rows — "
+                   f"expected exactly one")
+
+    r.note(f"SCO-09: instance inventory covers {len(classes)} class(es), "
+           f"{len(rows)} row(s); {open_rows} OPEN")
+    return open_rows
+
+
+def _dim_row(engagement: str, dim: str) -> str | None:
+    """The coverage-map row for a dimension (lowercased), or None."""
+    p = os.path.join(engagement, ".keel", "coverage-map.md")
     if not os.path.isfile(p):
         return None
-    out = []
     with open(p, encoding="utf-8") as fh:
         for ln in fh:
-            if not ln.lstrip().startswith("|"):
-                continue
-            cells = [c.strip() for c in ln.strip().strip("|").split("|")]
-            if len(cells) < 4:
-                continue
-            if cells[0].lower() == "module" or set(cells[0]) <= set("-: "):
-                continue
-            out.append(cells)
-    return out
+            if dim in ln and ln.lstrip().startswith("|"):
+                return ln.lower()
+    return None
+
+
+DIM_ID_RE = re.compile(r"\b([A-Z]{3}-\d{2})\b")
 
 
 def _rendered_in(c, texts, dim) -> bool:

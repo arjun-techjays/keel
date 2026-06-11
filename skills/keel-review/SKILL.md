@@ -37,6 +37,8 @@ As the client's lawyer, ask:
 - **Undefined term** — "basic", "standard", "full", "as required", "etc.".
 - **Uncapped exposure** — volume, iterations, revisions, support duration, the scope of "ongoing" — anything open-ended sitting under a fixed price.
 - **Weak teeth** — does each price-gating assumption carry a deadline *and* a consequence? Does change-control require **written approval before work starts**?
+- **External deferral (Law 12)** — does any statement's *substance* live in an external citation? *"Matching is handled per §4.4 of the RFP"* — as the client I'll argue §4.4 means whatever the RFP says, **not what you priced**. Every rule must be spelled out in the pack; an external reference is only valid as a `Source:` suffix. A binding section whose body defers to the RFP/SOW is a **High**.
+- **Unenumerated plural (Law 13)** — challenge every plural: *"the required reports"* — which reports, exactly, and **who confirmed the list is complete**? A class rendered in the plural without its named instances (and its closed-world confirmation in the instance inventory) is creep wearing a summary; at least Medium, High when it gates acceptance or price.
 
 ## High-creep-zone probes (section-specific — where creep actually enters)
 
@@ -59,6 +61,15 @@ Use the constitution's Part G crosswalk: any dimension ID listed in **more than 
 - **`SCO-08` scenario join** — for each module, `F2.3` (happy-path) and `F2.8` (exception/edge) concern the *same* workflow; a module whose `F2.8` leaves the exception class **blank — neither an example nor a disposition** — while `F2.3` claims a working process is a scenario-in-silence **High** (Law 11). An explicit "no exception, because X" is clean.
 - **Decision requested (`F1.8`)** asks for approval of the *enumerated frozen baseline*, not a vague "approve the direction".
 
+## Decision fidelity — reconcile the log against the pack (the factual-slip net)
+
+Cross-document consistency proves the pack agrees with *itself*; this pass proves it agrees with **what was actually decided**. Walk **every entry in `.keel/decision-log.md`** and locate its rendered statement in the pack (the entry's dimension ID + the Part G crosswalk tell you which section(s) to look in). For each entry check three things:
+- **Present** — the decision is rendered somewhere it binds (a decided-but-unrendered decision is silence, Law 1);
+- **Faithful** — the rendered number, enumeration, or disposition **matches the log verbatim in substance** (a threshold that drifted from `≥94%` to `94%`, an exclusion that softened to a deferral, an enumeration that lost a member — each is a **factual slip, High**);
+- **Consistent** — where the crosswalk renders one decision into several sections, all of them say the same thing.
+
+The results go into the report as a mandatory **`## Decision reconciliation`** section: one table row per log entry — *decision / dimension ID · rendered location (F-section) · match / MISMATCH (what drifted)*. `check_review` fails the report if the decision log is non-empty and this section is missing, and warns when it has fewer rows than the log has entries — reconcile all of them, not a sample.
+
 ## Owed / placeholder content rule
 
 `generate` may write thin sections that state what is still owed. In a **binding document (Doc 2, 3, or 6)**, any section still carrying *owed / TBD / to-be-confirmed / Partial* content is a **High** — you cannot freeze a fixed price on a placeholder. (Thinness in Doc 1 or Doc 5 narrative is usually Medium.) Name the owed item and point at the discovery activity that closes it.
@@ -66,6 +77,7 @@ Use the constitution's Part G crosswalk: any dimension ID listed in **more than 
 ## Output — `deliverables/scope-risk-report.md`
 
 - **Findings:** per finding — an ID · severity · the location (doc + Part F section) · the **hostile reading** ("as a client I'd argue…") · a **route** (A or B, below) · and the **fix as a source edit** — the exact text to add *upstream*, never a hand-edit of the rendered doc.
+- **Decision reconciliation:** the mandatory table from the decision-fidelity pass above — one row per decision-log entry, *decision / dimension ID · rendered location · match / MISMATCH*. `check_review` enforces its presence.
 - **Coverage ledger:** a table of all six documents × their Part F sections **by section ID** (`F1.1 … F6.6`), each marked *clean / finding(s) / not-probed*. This proves the review was exhaustive — a section ID missing from the ledger is an un-probed section.
 - **Action plan:** the findings grouped by route, in the order to execute them (below).
 - **Verdict** (the severity/coverage rules below).
@@ -78,7 +90,8 @@ A review finding is just a **late-discovered open item** — and Keel already ha
 
 - give it an ID and tag it **`raised-by: keel-review, round N`** (so `map` preserves it on re-score and provenance is clear);
 - carry its **route** (A or B), its location (doc + Part F section), and its **suggested disposition** — the ready-to-paste exclusion / definition / cap the report already wrote;
-- mark Route-A findings (owed/Partial) and any High as **[BLOCK]** so the gate reflects them.
+- mark Route-A findings (owed/Partial) and any High as **[BLOCK]** so the gate reflects them;
+- **supersede, never parallel.** When the finding *tightens an existing question* — open, or closed on a vague answer — the new question carries `supersedes: <Q-id>` and the original is marked `superseded-by: <new id>`, removing it from the active set. The lead must never be able to re-answer the vague original and defeat the sharpened finding: one gap, one active question, and it is the sharp one.
 
 This makes `clarify` the single disposition path for *every* gap, whether `map` found it or `review` did — one register, one decision-log writer, full traceability. The `scope-risk-report.md` remains the human-readable adversarial narrative; `open-questions.md` is the machine-actionable feed.
 
@@ -111,7 +124,7 @@ After writing `scope-risk-report.md`, run the bundled gate and reconcile it with
 ```bash
 python3 <kit>/checks/check_review.py <engagement-dir> <constitution.md>
 ```
-(`<kit>/checks/` sits beside the `constitution.md` you loaded; skip with a note if it isn't present.) It mechanically confirms the report exists, **the verdict matches the High count** (a FREEZE-CLEAR with any High is a hard failure), and **the coverage ledger references every active Part F section** (an un-probed section blocks FREEZE-CLEAR). A non-zero exit means your narrative and the machine disagree — fix the report (or finish the un-probed section) until they reconcile. Print the check output in the terminal summary. This is also where the `SCO-08` ledger is re-checked transitively: if the pack changed, re-run `keel-generate`'s check too — a freeze verdict is only as honest as the gates behind it.
+(`<kit>/checks/` sits beside the `constitution.md` you loaded; skip with a note if it isn't present.) It mechanically confirms the report exists, **the verdict matches the High count** (a FREEZE-CLEAR with any High is a hard failure), **the coverage ledger references every active Part F section** (an un-probed section blocks FREEZE-CLEAR), and — when the decision log is non-empty — **the `## Decision reconciliation` section is present** with a row per log entry (warn on shortfall). A non-zero exit means your narrative and the machine disagree — fix the report (or finish the un-probed section) until they reconcile. Print the check output in the terminal summary. This is also where the `SCO-08` ledger is re-checked transitively: if the pack changed, re-run `keel-generate`'s check too — a freeze verdict is only as honest as the gates behind it.
 
 ## Push — check back in (`phase="review"`)
 

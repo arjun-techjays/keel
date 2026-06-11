@@ -19,7 +19,7 @@ from keel_lib import (Constitution, Report, SECT_RE, find_constitution,
                       parse_constitution)
 
 EXPECTED_PER_PREFIX = {  # catalog sizes (sanity anchor; update with the catalog)
-    "SCO": 8, "PRD": 9, "UXD": 15, "ENG": 13, "DAT": 14, "SEC": 9,
+    "SCO": 9, "PRD": 9, "UXD": 15, "ENG": 13, "DAT": 19, "SEC": 9,
     "QAT": 12, "OPS": 9, "CHG": 4, "COM": 7, "DEL": 8,
 }
 

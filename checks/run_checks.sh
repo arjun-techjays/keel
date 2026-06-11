@@ -22,6 +22,14 @@ fail=0
 echo "▶ check_constitution  ($con)"
 "$py" "$here/check_constitution.py" "$con" || fail=1
 
+# Fixture regression: the maintained examples/ fixtures are deterministic and
+# must always reconcile with the current checks (golden passes, every seeded
+# violation is caught) — unlike ad-hoc engagement dirs, they are never stale.
+if [ -d "$root/examples/northstar-recycling" ]; then
+  echo
+  bash "$here/test_examples.sh" || fail=1
+fi
+
 for eng in "$@"; do
   echo
   echo "▶ check_generate  ($eng)"

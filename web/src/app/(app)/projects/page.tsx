@@ -52,7 +52,7 @@ export default async function ProjectsPage() {
           <div className="flex items-center gap-4 border-b border-hairline bg-panel px-5 py-3">
             <span className="flex-1 text-[11px] font-semibold uppercase tracking-[0.06em] text-faint">Project</span>
             <span className="w-[110px] text-[11px] font-semibold uppercase tracking-[0.06em] text-faint">Status</span>
-            <span className="w-[170px] text-[11px] font-semibold uppercase tracking-[0.06em] text-faint">Coverage</span>
+            <span className="w-[170px] text-[11px] font-semibold uppercase tracking-[0.06em] text-faint">Progress</span>
             <span className="w-[64px] text-right text-[11px] font-semibold uppercase tracking-[0.06em] text-faint">Block</span>
             <span className="w-[64px] text-right text-[11px] font-semibold uppercase tracking-[0.06em] text-faint">Open Q</span>
             <span className="w-[190px] text-[11px] font-semibold uppercase tracking-[0.06em] text-faint">Activity</span>
@@ -85,16 +85,18 @@ export default async function ProjectsPage() {
                   <FreezeBadge status={p.freeze_status} />
                 </div>
 
+                {/* Progress = Resolved % (covered + dispositioned, Part B);
+                    falls back to coverage_pct for projects not re-pushed yet. */}
                 <div className="flex w-[170px] items-center gap-2.5">
                   <div className="flex h-1.5 flex-1 overflow-hidden rounded-full bg-hairline-soft">
                     <div
                       style={{
-                        width: `${p.coverage_pct}%`,
-                        backgroundColor: p.coverage_pct === 100 ? "var(--covered)" : "var(--cobalt)",
+                        width: `${p.resolved_pct ?? p.coverage_pct}%`,
+                        backgroundColor: (p.resolved_pct ?? p.coverage_pct) === 100 ? "var(--covered)" : "var(--cobalt)",
                       }}
                     />
                   </div>
-                  <span className="tnum w-9 text-right font-mono text-xs text-muted-ink">{p.coverage_pct}%</span>
+                  <span className="tnum w-9 text-right font-mono text-xs text-muted-ink">{p.resolved_pct ?? p.coverage_pct}%</span>
                 </div>
 
                 <div className="w-[64px] text-right">

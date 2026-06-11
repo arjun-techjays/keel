@@ -10,3 +10,13 @@ __pycache__/
 .keel/
 deliverables/
 discovery/
+sample-inputs/
+
+# …except the maintained regression fixtures under examples/, whose engagement
+# state IS the test (checks/test_examples.sh reconciles the gates against it).
+!examples/**/.keel/
+!examples/**/.keel/**
+!examples/**/deliverables/
+!examples/**/deliverables/**
+!examples/**/discovery/
+!examples/**/discovery/**

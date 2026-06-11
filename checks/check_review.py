@@ -7,6 +7,11 @@
   3. Coverage ledger: the report references the Part F section IDs of the
      active documents (an un-referenced section is an un-probed section, which
      must block FREEZE-CLEAR).
+  4. Decision reconciliation: when a non-empty .keel/decision-log.md exists,
+     the report must carry a "## Decision reconciliation" section (every log
+     entry located in the rendered pack and checked for drift — the factual-
+     slip net). Warns when its table has fewer rows than the log has
+     dimension-ID-bearing entries.
 
 Usage:  python3 check_review.py <engagement-dir>
 Exit 0 = pass, 1 = failure(s).
@@ -73,7 +78,53 @@ def run(engagement: str, con_override: str | None = None) -> Report:
     else:
         r.warn("constitution not found — skipped coverage-ledger check")
 
+    # 4. decision reconciliation — the factual-slip net
+    _check_decision_reconciliation(r, engagement, text, low)
+
     return r
+
+
+DECISION_ID_RE = re.compile(r"\b([A-Z]{3}-\d{2}|RAID-[ADRQ]\d*)\b")
+
+
+def _check_decision_reconciliation(r: Report, engagement: str,
+                                   text: str, low: str) -> None:
+    """When the engagement has a decision log, the review report must carry a
+    Decision reconciliation section (presence + row-count floor only — content
+    matching is the reviewer's job, not a regex's)."""
+    p = os.path.join(engagement, ".keel", "decision-log.md")
+    if not os.path.isfile(p):
+        r.note("no .keel/decision-log.md — decision reconciliation not required")
+        return
+    with open(p, encoding="utf-8") as fh:
+        log_lines = [ln for ln in fh if DECISION_ID_RE.search(ln)]
+    if not log_lines:
+        r.note("decision-log has no dimension-ID-bearing entries — decision "
+               "reconciliation not required")
+        return
+
+    m = re.search(r"^#+\s*decision reconciliation\b", low, re.M)
+    if not m:
+        r.fail("decision log is non-empty but the report has no "
+               "'## Decision reconciliation' section — every decision must be "
+               "located in the rendered pack and checked for drift "
+               "(the factual-slip net)")
+        return
+
+    # row-count floor: table rows under the heading vs ID-bearing log entries
+    after = text[m.end():]
+    nxt = re.search(r"^#+\s", after, re.M)
+    section = after[:nxt.start()] if nxt else after
+    rows = [ln for ln in section.splitlines()
+            if ln.lstrip().startswith("|")
+            and DECISION_ID_RE.search(ln)]
+    if len(rows) < len(log_lines):
+        r.warn(f"decision reconciliation covers {len(rows)} row(s) but the "
+               f"decision log has {len(log_lines)} ID-bearing entries — "
+               f"confirm every decision was reconciled")
+    else:
+        r.note(f"decision reconciliation: {len(rows)} row(s) vs "
+               f"{len(log_lines)} log entries ✅")
 
 
 def _count_high(text: str) -> int:

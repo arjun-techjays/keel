@@ -11,7 +11,7 @@ It has two teeth:
 
 ## Part A — The Doctrine
 
-Eleven laws. The `review` phase enforces them; a pack cannot be frozen while any is violated.
+Fourteen laws. The `review` phase enforces them; a pack cannot be frozen while any is violated.
 
 1. **Silence is exclusion.** Anything not explicitly in scope is out of scope. The pack states this and the client acknowledges it in writing.
 2. **Every requirement is testable.** If you cannot write a pass/fail check for it, it is not a requirement yet — rewrite it until you can.
@@ -24,6 +24,9 @@ Eleven laws. The `review` phase enforces them; a pack cannot be frozen while any
 9. **Coverage is judged against the full corpus,** not the curated subset. Salience sets retrieval priority; it never sets the boundary of what gets audited.
 10. **Applicability is explicit.** Every dimension is Required, Conditional, Recommended, or N-A *by rule*. An N-A is a recorded decision with a reason — never a skip.
 11. **No scenario passes in silence.** For every workflow or process module, each scenario class — **happy path, exceptions, edge cases** — must be *either* demonstrated by a real example traced to a source artifact *or* explicitly dispositioned (N-A-with-reason, out-of-scope, or an assumption carrying impact-if-wrong). What is forbidden is a scenario class **claimed-handled but neither exampled nor dispositioned** — *"we handle exceptions"* with nothing behind it, the canonical silent-inclusion where the unseen exception becomes the unpriced work. A consciously recorded *"no edge case here, because X"* satisfies this law; silence does not. The teeth fall hardest on the **exception** class, where fixed-bid creep actually enters — a happy path is rarely the thing a client disputes after signature.
+12. **The pack is self-contained.** Every rule, threshold, formula, and enumeration is spelled out in full at the point where it binds. A citation (*"per §4.4 of the RFP"*, *"as defined in the SOW"*) is provenance, never a substitute for content — a section that defers its substance to an external document is silence wearing a footnote. Source references are welcome as suffixes (*"Source: RFP §4.4"*); they are forbidden as bodies. The reader of the pack must never need the RFP open beside it.
+13. **Named instances are enumerated, never summarized.** Wherever the evidence or a decision names instances of a class — integrations, roles, reports, business rules, tax regimes, document types — the pack carries one entry per named instance, each clearing its dimension's bar individually, and the closed-world question (*"are these ALL the X's?"*) has been explicitly answered or dispositioned. A class summarized in the plural (*"the required integrations"*) is a Partial, not a Covered.
+14. **When in doubt, research.** A gap, a named system / standard / regulation, or a vague answer that the team cannot ground from the corpus is **researched before it is asked about or scored** — what does EDI 820 actually require, what does this provider's auth actually look like, what does this tax regime actually split? Skipping research is the exception that needs a one-line reason, never the default: more research is always acceptable; a generic question where a specific one was researchable is not. Research informs questions and briefs — it never closes a dimension by itself (closure stays with the lead, per Law 5).
 
 ---
 
@@ -39,6 +42,12 @@ Each dimension in the catalog has an **Applies-when** rule expressed over the pr
 | **N-A** | Ruled out by the profile. | Recorded with its reason in the coverage map. Does not block. |
 
 **"Covered" means** (the third column in every catalog table) is the bar each dimension must clear — the anti-vagueness teeth. A dimension that is *present but vague* counts as **Partial**, not Covered, and Partial on a Required dimension blocks just like a Gap.
+
+**Per-instance bars score per instance (Law 13).** A dimension whose bar reads *"per X"* or *"each X"* (e.g. `ENG-04` per system, `SEC-01` per role, `PRD-09` each report) is Covered only when **every inventoried instance individually clears the bar** *and* the class is closed-world-confirmed (the lead has answered or dispositioned *"are these all the X's?"*). One vague instance, or an unanswered closed-world question, makes the whole dimension **Partial**. The instance inventory (`.keel/instance-inventory.md`, dimension `SCO-09`) is the machine-readable record this rule scores against.
+
+**Reasons carry their grounds.** An N-A reason, an exclusion note, or any disposition's rationale must state the **profile fact or evidence it rests on** — *"N-A: Surface = Batch/Pipeline, no human-facing screens"* is a reason; *"N-A because not applicable"* is not, and scores as **undecided** (it blocks like a missing decision).
+
+**Dispositioned counts as Resolved.** A Gap or Partial whose open question has been dispositioned — a documented assumption, an explicit exclusion, a deferred-to-phase item, or a T&M item (Laws 4–5) — is **Resolved** for progress purposes: it no longer counts against readiness, while staying visibly distinct from Covered (evidenced). The coverage map records it in the Score cell as e.g. `Partial — resolved (assumption RAID-A12)`. Progress is reported as **Resolved %** (covered + resolved, over applicable dimensions); Covered % remains the evidence-only statistic. An undispositioned Gap/Partial is the only thing that counts as unresolved.
 
 **Who decides what.** Required and Conditional are settled by *rule* — the profile resolves them automatically. Recommended is deliberately left to the *human*: these are the judgement calls the project lead should consciously own. The system makes them un-skippable not by forcing them in, but by refusing to freeze until the lead has looked at each one and *chosen*. Optionality with a forced, recorded decision — never a silent default.
 
@@ -87,6 +96,7 @@ Disciplines: **0** Scope Hygiene · **1** Product · **2** UX/Design · **3** En
 | SCO-06 | Glossary of terms | Always | Every domain/ambiguous term defined once, used consistently. |
 | SCO-07 | Prioritisation | Always | Each capability tagged Must/Should/Could/Won't for this scope. |
 | SCO-08 | Scenario coverage | Per module with a process workflow (Required); N-A for modules with no workflow, with reason | Each scenario class — happy / exception / edge — is **either** demonstrated by a real example traced to a source artifact **or** explicitly dispositioned (N-A-with-reason / out-of-scope / assumption-with-impact). **Covered** = no class left in silence; **Partial** (blocks like a Gap) = a class is claimed-handled but neither exampled nor dispositioned (exceptions weighted hardest); **Gap** = the workflow itself is unevidenced. A consciously recorded *"no edge case, because X"* is Covered, not a gap (Law 11). The anti-silent-inclusion gate behind scope-readiness. |
+| SCO-09 | Instance enumeration | Any active dimension's bar is per-instance — "per system", "per role", "each named" (Required); N-A with reason when no per-instance dimension is active | For each instance class named anywhere in the evidence (integrations, roles, reports, business rules, tax regimes, document types, …), an **inventory with one row per named instance** (`.keel/instance-inventory.md`), each row clearing its host dimension's bar or carrying an explicit disposition, **plus** the closed-world confirmation — *"are these ALL the X's?"* — answered with provenance or dispositioned. **Covered** = every instance specified-or-dispositioned and every class closed-world-confirmed; **Partial** (blocks like a Gap) = a vague plural, an instance with nothing behind it, or an unconfirmed closed-world; **Gap** = a named class with no inventory at all (Law 13). |
 
 ### 1 · Product — *Owner: Product / Engagement lead*
 
@@ -100,11 +110,11 @@ Disciplines: **0** Scope Hygiene · **1** Product · **2** UX/Design · **3** En
 | PRD-06 | MVP / phase boundary | Phasing = Full or Partial | What "v1" includes vs. what is later; the line is unambiguous. |
 | PRD-07 | Volume / usage assumptions | Always | Expected load, data sizes, concurrency — as numbers (feeds NFRs). |
 | PRD-08 | Business-decision dependencies | Recommended | Decisions the *client* must make, with by-when dates. |
-| PRD-09 | Reporting & analytics | Recommended | Which reports, dashboards, and exports are in scope — each named — and which are explicitly not. |
+| PRD-09 | Reporting & analytics | End users ≠ None (Recommended); N-A for M2M/pipeline-only systems, with reason | Which reports, dashboards, and exports are in scope — each named — and which are explicitly not. |
 
 ### 2 · UX / Design — *Owner: Design lead*
 
-> Resolves to **N-A** when Surface ∈ {API/Library, Batch/Pipeline} and End users = None/Developers. Otherwise **Required**. (This is the API-library-vs-user-product distinction.)
+> Resolves to **N-A** (whole discipline, with reason) when **Surface ≠ UI** — no human-facing interface is being built — *or* End users ∈ {None, Developers}. Otherwise **Required**. If an internal tool, pipeline, or migration ships *any* human-facing screens, set Surface = UI so this discipline activates; a data migration whose users only ever touch the destination system's own UI builds no interface and takes the N-A. (This is the API-library-vs-user-product distinction — keyed on whether *we* are building an interface, not on whether humans exist.)
 
 | ID | Dimension | Applies when | "Covered" means |
 |---|---|---|---|
@@ -140,7 +150,7 @@ Disciplines: **0** Scope Hygiene · **1** Product · **2** UX/Design · **3** En
 | ENG-10 | Third-party dependencies & licensing | If third-party deps | Each dependency, its license, and any cost/lock-in implications. |
 | ENG-11 | Environments & deployment | Always | Environments, deployment model, and release approach. |
 | ENG-12 | Known limitations accepted | Recommended | Tech debt / limitations the client accepts up front. |
-| ENG-13 | Notifications & messaging | Recommended | If the product sends email / SMS / push: channels, triggers, templates, provider, and who owns delivery. |
+| ENG-13 | Notifications & messaging | System sends email / SMS / push (Recommended); N-A otherwise, with reason | Channels, triggers, templates, provider, and who owns delivery. |
 
 ### 4 · Data / ML — *Owner: Data / ML lead*
 
@@ -159,7 +169,12 @@ Disciplines: **0** Scope Hygiene · **1** Product · **2** UX/Design · **3** En
 | DAT-11 | Model / vendor & change policy | AI ≠ None | Model/vendor choice and what happens when it changes. |
 | DAT-12 | Drift monitoring & retraining | AI ≠ None and Phasing ∋ Evolve | Production accuracy monitoring, alerts, and retraining triggers. |
 | DAT-13 | AI running cost / unit economics | AI ≠ None | Expected inference / token cost at projected volume, any cost ceiling, and who bears the ongoing run cost. |
-| DAT-14 | Interaction / conversation logging & retention | End users ≠ None | What interaction data is captured (transcripts, prompts, model in/out, confidence), where it is stored, the retention period, and how deletion / erasure requests are handled. |
+| DAT-14 | Interaction / conversation logging & retention | AI ≠ None and End users ≠ None | What interaction data is captured (transcripts, prompts, model in/out, confidence), where it is stored, the retention period, and how deletion / erasure requests are handled. |
+| DAT-15 | Cutover plan & freeze window | Migration = Yes | When the source freezes (and for how long), the cutover sequence, the window it runs in, and who owns the go/no-go decision. |
+| DAT-16 | Rollback / abort criteria | Migration = Yes | The conditions under which the migration is aborted, the rollback procedure, and the explicit point-of-no-return. |
+| DAT-17 | Migration reconciliation & validation | Migration = Yes | Source-vs-target counts/checksums per entity type, the acceptance threshold for discrepancies, and who signs off the reconciliation. |
+| DAT-18 | Parallel-run / dual-write period | Migration = Yes | Whether old and new run together, for how long, with what sync rules — or the explicit big-bang decision with its rationale. |
+| DAT-19 | Legacy decommission & retention | Migration = Yes | When the source becomes read-only / retired, and how legacy data is archived or retained (and for how long). |
 
 ### 5 · Security / Compliance — *Owner: Security lead*
 
@@ -188,7 +203,7 @@ Disciplines: **0** Scope Hygiene · **1** Product · **2** UX/Design · **3** En
 | QAT-07 | UAT | Client UAT in scope | Scope, who runs it, entry/exit criteria, duration, in-UAT fix expectations, sign-off. |
 | QAT-08 | Non-functional testing | Per NFRs / UI / Regulated | Load, security, accessibility testing approach as applicable. |
 | QAT-09 | AI evaluation testing | AI ≠ None | How accuracy/hallucination/OOD behaviour is tested against the golden set. |
-| QAT-10 | Regression scope | Recommended | What regression covers and when it runs. |
+| QAT-10 | Regression scope | Codebase ≠ Greenfield, or phased/repeated releases (Recommended); N-A for one-time runs, with reason | What regression covers and when it runs. |
 | QAT-11 | Automation vs manual split | Recommended | What is automated vs manual, and why. |
 | QAT-12 | Browser / device test matrix | Surface = UI | The tested set (ties to the UX support matrix). |
 
@@ -200,7 +215,7 @@ Disciplines: **0** Scope Hygiene · **1** Product · **2** UX/Design · **3** En
 | OPS-02 | Monitoring & alerting | Production deployment | What's monitored, alerting, and who owns it. |
 | OPS-03 | Incident response & on-call | Production + ops responsibility | The on-call model and incident process. |
 | OPS-04 | Support model post-handover | Post-launch support in scope | Who supports, hours, and SLA. |
-| OPS-05 | **Warranty / bug-fix period** | Always | The free-fix window after launch, its length, and what qualifies (a major creep zone). |
+| OPS-05 | **Warranty / bug-fix period** | Production or client handover (Required); N-A only for throwaway internal runs, with reason | The free-fix window after launch, its length, and what qualifies (a major creep zone). For a migration: the post-cutover data-fix window. |
 | OPS-06 | Maintenance & updates | Ongoing maintenance in scope | What maintenance covers and at what cadence. |
 | OPS-07 | Backup / DR | Production + data | Backup and disaster-recovery approach and ownership. |
 | OPS-08 | Handover & knowledge transfer | Post-launch ops ∈ {Client, Shared} | What's handed over and how knowledge transfers. |
@@ -259,10 +274,10 @@ RAID is the living record that keeps the rest honest.
 
 ## Part E — How the Skills Consume This
 
-- **`map`** sets the profile, resolves every dimension to Required / Conditional / Recommended / N-A, and scores each active dimension Covered / Partial / Gap with evidence and provenance. Output: the **Coverage Map**.
-- **`clarify`** turns every Required-or-Recommended Gap/Partial into a discovery action or a disposition (Law 5), looping until no Required dimension is open.
-- **`generate`** renders the six documents **against Part F's section structure**, writing only dimensions that are Required/Recommended-and-covered into their mapped sections, validates cross-document consistency, and carries traceability through (Law 6). It also emits the machine-readable **`SCO-08` scenario ledger** (`.keel/scenario-coverage.md`) — one row per module × scenario class — which `check_generate` reconciles deterministically to enforce Law 11 (no scenario in silence).
-- **`review`** enforces the Doctrine (Part A) adversarially — weasel words, untestable criteria, silent exclusions, unsurfaced conflicts — and blocks freeze on any high-severity violation. Its findings are **fed back into the open-questions register** (tagged `raised-by: keel-review`) so `clarify` dispositions them like any other gap — there is exactly one disposition path, never a parallel one.
+- **`map`** sets the profile, resolves every dimension to Required / Conditional / Recommended / N-A, and scores each active dimension Covered / Partial / Gap with evidence and provenance. It owns the **instance inventory** (`.keel/instance-inventory.md`, dimension `SCO-09`) — one row per named instance per class, minted from the evidence. Before minting questions it **researches** (Law 14): every Required Gap/Partial and every unspecified named instance is decomposed and researched on the web — default yes, skip needs a one-line reason — producing **research briefs** (`discovery/research/`) so questions go out **instance-level, with example answers**, never as the dimension's generic template. Output: the **Coverage Map** + inventory + briefs + sharpened open questions.
+- **`clarify`** turns every Required-or-Recommended Gap/Partial into a discovery action or a disposition (Law 5), looping until no Required dimension is open. It opens with a **discipline filter** — the person answering chooses which discipline(s) they are clarifying (by dimension-ID prefix); unselected questions remain open and blocking for their proper owner, never dispositioned by omission. A vague answer is recorded **and sharpened in the same round** (the follow-up quotes the answer and names the deficiency, superseding the original). When an answer names something the corpus can't ground, it researches it (Law 14) before pressing on. Closed-world questions (`SCO-09`) resolve to confirmation-with-provenance or a disposition.
+- **`generate`** renders the six documents **against Part F's section structure**, writing only dimensions that are Required/Recommended-and-covered into their mapped sections, validates cross-document consistency, and carries traceability through (Law 6). The pack it writes is **self-contained** (Law 12) — every rule spelled out in full, external citations only as `Source:` suffixes. It emits the machine-readable **`SCO-08` scenario ledger** (`.keel/scenario-coverage.md`) and reconciles the **`SCO-09` instance inventory** — every specified instance rendered by name into its host dimension's section, every excluded instance acknowledged — both of which `check_generate` enforces deterministically (Laws 11–13).
+- **`review`** enforces the Doctrine (Part A) adversarially — weasel words, untestable criteria, silent exclusions, unsurfaced conflicts, external-citation bodies (Law 12), unenumerated plurals (Law 13) — and blocks freeze on any high-severity violation. It performs **decision reconciliation**: every decision-log entry is located in the rendered pack and checked for drift (a number, enumeration, or disposition that changed in rendering is a factual slip, High). Its findings are **fed back into the open-questions register** (tagged `raised-by: keel-review`); a finding that tightens an existing question **supersedes** it (`supersedes:` / `superseded-by:`) so the vague original leaves the active set — there is exactly one disposition path, never a parallel one.
 
 ---
 
@@ -295,20 +310,20 @@ Each table is **ID · Key section · What it should cover · Owner · Renders fr
 | F2.2 | Module breakdown | The business decomposed into modules (e.g. Intake, Processing, Validation, Approval, System Updates, Exception Handling, Reporting, Admin, Integrations). Each gets its own sign-off. | BA / Engagement lead | SCO-02 |
 | F2.3 | Per-module: Current state | How the process works today — actors, triggers, inputs/outputs, systems, manual steps, pain points, known exceptions. Carries the module's **happy-path scenario** — a real worked example traced to a source artifact, or its explicit disposition (Law 11). | BA | PRD-04, SCO-08 |
 | F2.4 | Per-module: Future state | How the AI-enabled process will work — AI role, software automation role, human approval points, exception flow, system updates, audit trail. | BA | ENG-03, DAT-10 |
-| F2.5 | Per-module: In scope / Out of scope | Functional capabilities, document/data types, workflows and integrations included; and explicitly what is excluded, deferred, or unconfirmed. | BA / Engagement lead | SCO-03 |
+| F2.5 | Per-module: In scope / Out of scope | Functional capabilities, document/data types, workflows and integrations included; and explicitly what is excluded, deferred, or unconfirmed. | BA / Engagement lead | SCO-03, SCO-09 |
 | F2.6 | Per-module: Functional requirements | Capability-level requirements (what the module must do), each prioritised. Detailed, testable specs are deferred to the SRS. | BA | PRD-04, SCO-07 |
-| F2.7 | Per-module: Business rules | Approval rules, matching rules, validation rules, escalation rules. | BA | ENG-03 |
+| F2.7 | Per-module: Business rules | Approval rules, matching rules, validation rules, escalation rules — **each named rule spelled out in full** (Laws 12–13), never summarized in the plural or deferred to the source document. | BA | ENG-03, SCO-09 |
 | F2.8 | Per-module: Exceptions | Missing data, duplicates, API failures, low AI confidence, mismatches, delayed approvals — and how each is handled. Carries the module's **exception and edge-case scenarios** — each a real worked example traced to a source artifact, or an explicit disposition (out / N-A-with-reason / assumption) so no class is left in silence (Law 11). | BA | DAT-09, SCO-08 |
 | F2.9 | Per-module: Data fields | Key inputs/outputs and the fields the module reads or writes. | BA / Architect | ENG-06 |
-| F2.10 | Per-module: Integrations | Systems the module touches and the direction of data flow. | BA / Architect | ENG-04 |
+| F2.10 | Per-module: Integrations | Systems the module touches and the direction of data flow — every named system listed individually (Law 13). | BA / Architect | ENG-04, SCO-09 |
 | F2.11 | Per-module: Acceptance criteria | What must be true for the module to be considered complete and acceptable. | BA / Engagement lead | SCO-05, DAT-07 |
 | F2.12 | AI vs deterministic responsibility split | Explicit dividing line: what AI may decide (probabilistic), what stays deterministic (rule-based), where a human must confirm. Governs every module. | Architect / BA | ENG-03, DAT-10 |
-| F2.13 | User roles & permissions | The user classes and what each can do. | BA | PRD-03, SEC-01 |
+| F2.13 | User roles & permissions | The user classes and what each can do — every named role listed individually (Law 13). | BA | PRD-03, SEC-01, SCO-09 |
 | F2.14 | Global out-of-scope | Cross-cutting exclusions that apply beyond a single module. | Engagement lead | SCO-04, PRD-05 |
 | F2.15 | Assumptions reference | Pointer to the RAID Register; assumptions are owned there, not duplicated here. | Engagement lead | RAID-A |
 | F2.16 | Glossary of terms | Every domain/ambiguous term defined once and used consistently across the pack. | BA / Engagement lead | SCO-06 |
 | F2.17 | Success metrics | The North Star plus guardrail metrics, each measurable with a target — what "working" means for the business. | Product / Engagement lead | PRD-02 |
-| F2.18 | Reporting & analytics scope | Which reports, dashboards, and exports are in scope (each named) and which are explicitly not. | BA | PRD-09 |
+| F2.18 | Reporting & analytics scope | Which reports, dashboards, and exports are in scope (each named) and which are explicitly not. | BA | PRD-09, SCO-09 |
 | F2.19 | UX — platforms, responsive & browser matrix | Exact platforms/breakpoints in scope and excluded; responsive rules; the supported/unsupported browser-device set. | Design lead | UXD-01, UXD-10, UXD-11 |
 | F2.20 | UX — screen/flow inventory & state coverage | Every screen and flow listed; per flow the full state set (default, loading, empty, error, partial, success, permission-denied, zero-data, overflow). | Design lead | UXD-02, UXD-03 |
 | F2.21 | UX — design fidelity, system, revisions & brand | Fidelity/deliverable per screen; design-system source & ownership; the number of revision rounds in scope; brand constraints; motion scope. | Design lead | UXD-04, UXD-05, UXD-06, UXD-12, UXD-13 |
@@ -327,7 +342,7 @@ Each table is **ID · Key section · What it should cover · Owner · Renders fr
 | F3.3 | AI / ML approach | Capability types (extraction, classification, summarisation, generation, retrieval), model/service choices, hosting, and the data-flow boundary. | Architect / ML lead | ENG-03, DAT-05, DAT-06, DAT-07, DAT-08, DAT-11, DAT-13 |
 | F3.4 | Deterministic logic boundary | What is implemented as deterministic, testable software vs handed to AI; confidence thresholds and human-in-the-loop points. | Architect | ENG-03, DAT-09, DAT-10 |
 | F3.5 | Data architecture & dictionary | Core entities, data stores, the master field list/schema, and how data moves through the system. | Architect / Data | ENG-06, DAT-01, DAT-02, DAT-03, DAT-14 |
-| F3.6 | Integration specifications | Each external system: direction (read/write), protocol/API, authentication, rate limits and known constraints. (Break into its own doc only if integration is the dominant risk.) | Architect | ENG-04, ENG-05, ENG-13 |
+| F3.6 | Integration specifications | Each external system: direction (read/write), protocol/API, authentication, rate limits and known constraints — one entry per named system (Law 13). (Break into its own doc only if integration is the dominant risk.) | Architect | ENG-04, ENG-05, ENG-13, SCO-09 |
 | F3.7 | Non-functional requirements (NFRs) | Measurable targets for performance, scalability, availability, reliability, usability/accessibility — not adjectives. | Architect | ENG-07, PRD-07 |
 | F3.8 | Security & compliance | AuthN/AuthZ, encryption in transit/at rest, SSO, PII handling, data residency, retention, audit trail, regulatory obligations. | Architect / Security | SEC-01, SEC-02, SEC-03, SEC-04, SEC-05, SEC-06, SEC-07, SEC-09, DAT-04 |
 | F3.9 | Environments & deployment | Deployment model (cloud/region/on-prem/hybrid), environments, and release approach. | Architect / DevOps | ENG-11, OPS-01, OPS-07 |
@@ -363,6 +378,7 @@ Each table is **ID · Key section · What it should cover · Owner · Renders fr
 | F5.9 | Entry / exit criteria per phase | What must be true to start and to close each phase — ties phases to acceptance. | Delivery lead | DEL-08 |
 | F5.10 | Support, warranty & maintenance | The post-launch support model (who, hours, SLA), the warranty/bug-fix window (length + what qualifies), and ongoing maintenance scope and cadence. | Delivery lead / Ops | OPS-04, OPS-05, OPS-06 |
 | F5.11 | Handover, documentation & adoption | What is handed over and how knowledge transfers; the documentation deliverables; training, adoption support, and who owns the business-process change. | Delivery lead | OPS-08, OPS-09, CHG-01, CHG-02, CHG-03 |
+| F5.12 | Migration cutover & rollback | The cutover plan and freeze window, rollback/abort criteria and point-of-no-return, reconciliation/validation thresholds and sign-off, parallel-run or big-bang decision, and legacy decommission/retention. Omitted (with its dimensions N-A) when Migration = No. | Delivery lead / Data | DAT-15, DAT-16, DAT-17, DAT-18, DAT-19 |
 
 > F5.10–F5.11 were added by the stable-ID crosswalk pass to home the Ops (support/warranty/maintenance/handover/docs) and Change (training/adoption/process-ownership) dimensions, which had no rendering target in the original six docs — see Part G.
 
@@ -393,7 +409,8 @@ The **Renders from** columns in Part F, taken together, are the canonical **dime
   - `COM-07` (sign-off & exclusions ack) → `F6.1`, `F6.3`, `F6.6`.
   - `ENG-03` (AI-vs-deterministic boundary) → `F2.4`, `F2.7`, `F2.12`, `F3.3`, `F3.4`.
   - `SCO-08` (scenario coverage) → `F2.3` (happy-path) **and** `F2.8` (exception + edge): each scenario class appears in its section as either a real worked example or an explicit disposition, split across the two — so a module is scenario-complete only when no class is left in silence, and `review` joins them to confirm the same workflow is the one being evidenced.
+  - `SCO-09` (instance inventory) → `F2.5`, `F2.7`, `F2.10`, `F2.13`, `F2.18`, `F3.6`: every **specified** instance in `.keel/instance-inventory.md` appears **by name** in at least one target section of its host dimension, and every **excluded** instance is acknowledged in the exclusions and rolls up to `F6.3` — `check_generate` reconciles the ledger against the rendered prose deterministically (Law 13).
 
 **Coverage guarantee (the rule that makes this airtight):** every Part D dimension resolves to **≥1** Part F section. A dimension that is **Required (or Recommended-included) and Covered but has no Part F home is itself a freeze blocker** — silence in the *structure* is the same defect as silence in the *scope* (Law 1). The crosswalk pass that introduced stable IDs also surfaced and closed the original homeless dimensions by adding sections `F2.16–F2.23` (Glossary, Success metrics, Reporting, and the UX/Design block) and `F5.10–F5.11` (Support/warranty/maintenance, Handover/docs/adoption). If a future profile activates a dimension with no section, `map` flags it and a section must be added before freeze — never rendered into silence.
 
-*Version: v1.3 (draft for review). v1.1 added Part F (Pack Structure); v1.2 adds stable dimension/section IDs and Part G (the crosswalk + coverage guarantee); v1.3 adds Law 11 (no scenario passes in silence) and dimension `SCO-08` (scenario coverage — each happy/exception/edge class either exampled or explicitly dispositioned), homed in `F2.3`/`F2.8`. Every change to this file is itself change-controlled — it is the standard the whole system trusts.*
+*Version: v1.4 (draft for review). v1.1 added Part F (Pack Structure); v1.2 adds stable dimension/section IDs and Part G (the crosswalk + coverage guarantee); v1.3 adds Law 11 (no scenario passes in silence) and dimension `SCO-08`, homed in `F2.3`/`F2.8`. v1.4 adds Laws 12–14 (self-contained pack · instance enumeration · when-in-doubt-research), dimension `SCO-09` + the instance inventory ledger, the migration dimensions `DAT-15`–`DAT-19` homed in `F5.12`, the per-instance and reason-quality scoring rules and Resolved-progress accounting (Part B), the applicability re-keying of the over-broad Always/Recommended rows, and the research, discipline-filter, decision-reconciliation, and supersession duties in Part E. Every change to this file is itself change-controlled — it is the standard the whole system trusts.*

@@ -25,8 +25,8 @@ Read **`constitution.md`** *before doing anything else*. Look for it at the proj
 
 Keel keeps its machinery out of the user's way. Create these directories as needed and write to them exactly:
 
-- `.keel/` — **internal machinery** (audit/reference; the user rarely opens these): `coverage-map.md`, `asset-manifest.md`.
-- `discovery/` — **what the user acts on**: `open-questions.md`, `discovery-plan.md` (and later, `discovery/answers/` where the lead drops each round's material).
+- `.keel/` — **internal machinery** (audit/reference; the user rarely opens these): `coverage-map.md`, `asset-manifest.md`, `instance-inventory.md`.
+- `discovery/` — **what the user acts on**: `open-questions.md`, `discovery-plan.md`, `research/` (the research briefs, `RB-<nn>-<slug>.md` + `index.md`) (and later, `discovery/answers/` where the lead drops each round's material).
 
 Never write Keel outputs to the project root — the root stays clean for the client's own materials.
 
@@ -40,6 +40,8 @@ Whatever the project lead provides: direct-dropped key documents (always), and �
 - `discovery/open-questions.md` — the RAID open-questions seed; each tagged *must-close-before-estimate / proceed-with-assumption / too-uncertain→T&M / future-phase*.
 - `discovery/discovery-plan.md` — the recommended activities to close the gaps.
 - `.keel/asset-manifest.md` — every input, its type, and its processing status (including media not yet processed).
+- `.keel/instance-inventory.md` — the `SCO-09` ledger: one row per named instance per class, plus one `__CLOSED-WORLD__` row per class (Law 13). This skill **owns** it.
+- `discovery/research/` — the research briefs (Law 14) that back the sharpened questions. Persistent — never deleted by a re-run.
 
 ## Workflow
 
@@ -59,14 +61,30 @@ For each Required and Recommended dimension, search the evidence and classify:
 - **Partial** — present but vague, incomplete, or failing the bar. Blocks on a Required dimension exactly like a Gap.
 - **Gap** — not addressed.
 
-Cite provenance on every Covered/Partial (file + page/section, or "client call, <date>"). On a RAG corpus, favour recall: a false Gap costs one wasted question, a false Covered costs missed scope — so do a second "did we really not find this?" pass before declaring a hard Gap. Where two sources disagree on the same dimension, raise a **conflict** in `discovery/open-questions.md` — never silently pick one (Law 7).
+**Mark dispositioned items Resolved (Part B).** When the decision log shows a Gap/Partial dimension's open question dispositioned — assumption, exclusion, deferral, or T&M — record it in the Score cell as e.g. `Partial — resolved (assumption RAID-A12)`. It stays distinct from Covered (it is not evidenced) but no longer counts as unresolved: progress is **Resolved %** (covered + resolved over applicable), with Covered % as the evidence-only statistic.
+
+Cite provenance on every Covered/Partial (file + page/section, or "client call, <date>"). On a RAG corpus, favour recall: a false Gap costs one wasted question, a false Covered costs missed scope — so do a second "did we really not find this?" pass before declaring a hard Gap. **Score the meaning, not the wording**: the evidence rarely uses the catalog's vocabulary, so before declaring a Gap, search synonyms and adjacent phrasings of the dimension's terms (a "free-fix window" covers *warranty*; "who can see what" covers *AuthZ*; a reconciliation spreadsheet covers *validation*). Where two sources disagree on the same dimension, raise a **conflict** in `discovery/open-questions.md` — never silently pick one (Law 7).
+
+**Instance enumeration (`SCO-09`, Law 13) — mint the inventory, then score per instance.** Scan the evidence for **named instances** of every active per-instance dimension — each integration system (`ENG-04`), each user role (`SEC-01`), each report (`PRD-09`), each business rule, tax regime, document type. Write/refresh **`.keel/instance-inventory.md`**: one row per `Class | Instance | Dimension(s) | Status | Evidence / disposition`, statuses `SPECIFIED / ASSUMPTION / EXCLUDED / DEFERRED / OPEN` (derive them from the coverage evidence + decision log), plus **exactly one `__CLOSED-WORLD__` row per class** (`CONFIRMED` with provenance / `ASSUMED` with a `RAID-A#` / `OPEN`) recording whether *"are these ALL the X's?"* has been answered. **Preserve rows added by later skills or earlier rounds** exactly as step 7 preserves externally-raised questions — regeneration refreshes statuses, it never drops a named instance. Then apply the Part B per-instance rule: a "per X" dimension is Covered only when every inventoried instance individually clears its bar *and* the class is closed-world-confirmed; one vague instance or an `OPEN` closed-world row makes it Partial.
 
 **Scenario coverage (`SCO-08`, Law 11) — score per module, on the decision not the artifact.** For every module with a process workflow, walk the three scenario classes — happy / exception / edge. A class is satisfied when it is **either** evidenced by a real example traced to a source artifact (a sample document, record, screenshot, or transcript walkthrough) **or** explicitly dispositioned (N-A-with-reason / out-of-scope / assumption-with-impact). Score `SCO-08` **Covered** when no class is left in silence; **Partial** (blocks like a Gap) when a class is claimed-handled but neither exampled nor dispositioned — weight the **exception** class hardest, it is where fixed-bid creep enters; **Gap** when the workflow itself is unevidenced; **N-A** (with reason) for a module with no process workflow. Do **not** manufacture a false gap: a consciously recorded *"no edge case here, because X"* is Covered, not owed — the gate is on the *decision*, not on producing an artifact that may not exist. Where a class is genuinely in silence, the step-4 action is concrete: **request that scenario's example, or put the disposition decision to the lead** — name the workflow and the class.
+
+**3b · Research before you ask (Law 14).** For each Required Gap/Partial dimension and each inventory instance not yet `SPECIFIED`, decide whether web research would sharpen the question — **the default is yes**; skip only with a one-line recorded reason (the topic is fully grounded by the corpus, or it is a pure client-preference question that no research can answer). *Depth comes from what THIS engagement names — EDI 820, SAML, CieTrade, 3-way matching, GST/HST/QST/PST are research topics because the evidence names them, never because a catalog row does.* For each topic:
+- **Decompose** it into the sub-decisions needed to clear the dimension's "Covered means" bar (an integration decomposes into version/variant, auth, direction, error/ack handling, rate limits, sandbox, ownership; a tax regime into jurisdictions, split rules, rounding, exemptions; a matching rule into inputs, tie-breaking, tolerances, override paths).
+- **Research** it (WebSearch/WebFetch): the standard's actual requirements, the provider's actual auth and limits, the regime's actual splits, the typical option space. Every claim in a brief cites its URL and access date.
+- **Write the brief** at `discovery/research/RB-<nn>-<slug>.md`: *Topic · Why it matters here (dimension IDs + instances + what it blocks) · What the research found (sourced) · The decision space (options + trade-offs) · Questions for the lead — each with 2–3 example answers* (e.g. *"Which EDI 820 version does the bank require — e.g. 'X12 5010', 'X12 4010', or a bank-proprietary CSV?"*) *· Suggested default assumption with impact-if-wrong.* Maintain `discovery/research/index.md` (one line per brief).
+- **Re-run economics:** briefs persist across runs — never delete one; skip a topic whose brief already exists and whose coverage status hasn't changed since; date-stamp every brief. Research informs the questions below — it never closes a dimension by itself (closure stays with the lead).
 
 **4 · Disposition gaps and recommend discovery — derived fresh from THIS run's open set.**
 For each Required Gap/Partial (and each Recommended item the lead chose to include), do one of:
 - propose a **disposition** where one is clearly reasonable — assumption (with impact-if-wrong), explicit exclusion, defer-to-phase, or T&M; or
 - propose a **discovery activity** to close it, specifying: the method (stakeholder interview, workshop, data audit, technical spike, document request, *or a real-world working session that produces artifacts* — e.g. a UX design round whose screen inventory and state matrix are the "answer", not a chat reply), *why that method fits*, who to involve, the exact questions or data to gather, and which dimension(s) it closes.
+
+**Questions are instance-level, with example answers — never the dimension's generic template.** When a research brief exists for the topic, the question is minted *from the brief*: it names the specific instance, asks the specific sub-decision, and carries the brief's 2–3 example answers and a pointer to the brief (*"Which EDI 820 version does the bank require — e.g. X12 5010, X12 4010, or bank-proprietary CSV? (see RB-03)"*, never *"confirm the integration specs"*). Closed-world questions are explicit per class: *"Are CieTrade, EDI 820, and SAML SSO ALL the integrations?"*
+
+**Sharpen on re-ask.** When a dimension re-opens as Partial over a prior vague answer in the decision log, the regenerated question **quotes the vague answer and names the deficiency** (*"You said 'standard reports' — name each report and its audience"*) — never the original generic form again.
+
+**Dedup before emitting.** Merge questions that target the same underlying decision across dimensions into **one** question carrying all the dimension IDs it concerns (questions already carry multiple IDs) — never two phrasings of one decision in the register.
 
 Cluster activities so one session closes many gaps (e.g. a single ops workshop closing eight).
 
@@ -79,16 +97,18 @@ List every input with its type and processing status. Register any media not pro
 Present every Recommended dimension to the lead for an explicit **include / exclude** choice. Record it; log a one-line reason for each exclude. Report any *undecided* Recommended dimension as blocking — optionality with a forced decision, never a silent default.
 
 **7 · Reconcile the outputs before writing — the anti-staleness sub-gates.**
-The four files must agree with each other on every re-run. Validate, and fix any drift before emitting:
+The regenerated files (coverage map, open questions, discovery plan, asset manifest, instance inventory) must agree with each other on every re-run. Validate, and fix any drift before emitting:
 - **Plan ↔ coverage:** every dimension named anywhere in `discovery/discovery-plan.md` (including inside clustered activities) is currently **Gap / Partial / undecided-Recommended** in this run's coverage map. **No Covered or N-A dimension may appear as work-to-do.**
 - **Open-questions ↔ coverage:** every open *dimension-derived* `[BLOCK]` traces to a current Gap/Partial/conflict/undecided item; anything its source closed this round is marked resolved, not left dangling.
 - **Carry nothing forward by inertia:** a clustered activity, question, or plan line that referred to a now-Covered dimension is dropped or recomputed, never preserved stale.
 - **Preserve externally-raised items (the exception to the above).** Open questions tagged **`raised-by: keel-review`** or **`raised-by: keel-clarify`** are *not* derived from a catalog dimension — they were surfaced downstream (a review loophole, a follow-up clarify raised). **Re-score regenerates only the dimension-derived questions; it must carry these through untouched** unless the decision log shows them dispositioned. Dropping them as "stale" would silently re-open a scope hole the adversarial pass already caught — the exact failure this kit exists to prevent.
+- **Supersession is terminal.** A question marked `superseded-by: <id(s)>` is dead: never re-minted, never counted in the open/blocking totals — its [BLOCK] lives on in its successors. And **never mint a generic dimension-derived question while an active sharpened successor (`supersedes:` it, `raised-by:` review/clarify, or research-sharpened) targets the same gap** — that would resurrect the vague form the sharpening replaced.
+- **Preserve inventory rows.** `.keel/instance-inventory.md` regeneration refreshes statuses from the current coverage + decision log, but a named instance row is never dropped — an instance that stopped appearing in evidence is a conflict to raise, not a row to delete.
 
 If you find drift, the fix is to re-derive the *dimension-derived* items from the current coverage map (the single source of truth this run) while preserving the externally-raised, not-yet-dispositioned ones.
 
 **8 · Emit and summarise.**
-Write the four files. `.keel/coverage-map.md` **leads with a Blocking View** — the conflicts, the highest-severity blockers (ranked, each pointing to its open-question ID), and the count of undecided Recommended items — and relegates the full per-dimension scoring to an **Appendix**, so the default read is *what to act on*, not all ~80 rows. Then print a short summary in the terminal: the confirmed profile; counts (Required covered / partial / gap; Recommended included / excluded / undecided); the conflicts; the top blocking open questions; the path to `discovery/open-questions.md` so the lead knows where to act; and the single highest-value discovery activity to do next.
+Write the five regenerated files (plus any new research briefs). `.keel/coverage-map.md` **leads with a Blocking View** — the conflicts, the highest-severity blockers (ranked, each pointing to its open-question ID), and the count of undecided Recommended items — and relegates the full per-dimension scoring to an **Appendix**, so the default read is *what to act on*, not all ~80 rows. Then print a short summary in the terminal: the confirmed profile; counts (Required covered / partial / gap; Recommended included / excluded / undecided); the conflicts; the top blocking open questions; the path to `discovery/open-questions.md` so the lead knows where to act; and the single highest-value discovery activity to do next.
 
 **9 · Push — check back in (`phase="map"`).** Map produces no document pack, so push the **map** phase — it syncs coverage + open questions to the shared dashboards *without* running the document gate (no "generate the six docs?" prompt). Use the **begin → PUT → finish** flow — **never base64-encode the zip or read it into context; that stalls the agent**:
 ```bash
@@ -112,7 +132,7 @@ Then `rm -f .keel/_push.zip`. Report the ingested counts (dimensions, coverage %
 ## Project profile (confirmed)        <the 16 axes, one line each; unknowns flagged>
 
 ## Summary
-Required: X covered · Y partial · Z gap   |   Recommended: A in · B out · C undecided   |   Conflicts: N   |   Unprocessed: M
+Required: X covered · Y partial · Z gap (R resolved)   |   Recommended: A in · B out · C undecided   |   Resolved: P% (Covered: Q%)   |   Conflicts: N   |   Unprocessed: M
 
 ## ▶ Blocking view — resolve before quoting   ← the default read
 - Conflicts: one line each
@@ -126,4 +146,4 @@ Required: X covered · Y partial · Z gap   |   Recommended: A in · B out · C 
 
 ## Handoff
 
-`keel-clarify` reads `discovery/open-questions.md` + `discovery/discovery-plan.md` and loops until no Required dimension is open; `keel-generate` reads `.keel/coverage-map.md`. Re-run `keel-map` after each discovery round to re-score against the enlarged evidence — **all four outputs are living and regenerated together each run** (coverage map, open questions, discovery plan, asset manifest), never one-time snapshots. The discovery plan in particular must shrink as gaps close; it never accumulates already-Covered items.
+`keel-clarify` reads `discovery/open-questions.md` + `discovery/discovery-plan.md` (questions arrive instance-level, with example answers and brief pointers) and loops until no Required dimension is open; `keel-generate` reads `.keel/coverage-map.md` + `.keel/instance-inventory.md`. Re-run `keel-map` after each discovery round to re-score against the enlarged evidence — **the five regenerated outputs are living and regenerated together each run** (coverage map, open questions, discovery plan, asset manifest, instance inventory), never one-time snapshots; **research briefs are the exception — persistent, never regenerated away**. The discovery plan in particular must shrink as gaps close; it never accumulates already-Covered items.

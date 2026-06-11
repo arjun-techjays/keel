@@ -143,8 +143,13 @@ export default async function WorkspacePage({ params }: { params: Promise<{ id: 
           <StatSurface label="[BLOCK] count" sub={p.block_count > 0 ? "Generate gate blocked" : "Generate gate clear"}>
             <span className={`tnum font-mono text-[34px] font-semibold ${p.block_count > 0 ? "text-gap" : "text-ink"}`}>{p.block_count}</span>
           </StatSurface>
-          <StatSurface label="Coverage" sub={`${p.covered_count} of ${p.total_dims} dimensions covered`}>
-            <span className="tnum font-mono text-[34px] font-semibold text-ink">{p.coverage_pct}</span>
+          {/* Headline = Resolved % (covered + dispositioned, constitution Part B);
+              Covered % stays visible as the evidence-only statistic. */}
+          <StatSurface
+            label="Progress"
+            sub={`${p.resolved_count ?? p.covered_count} of ${p.total_dims} resolved · ${p.coverage_pct}% covered (evidenced)`}
+          >
+            <span className="tnum font-mono text-[34px] font-semibold text-ink">{p.resolved_pct ?? p.coverage_pct}</span>
             <span className="font-mono text-[18px] font-medium text-faint">%</span>
           </StatSurface>
           <StatSurface label="Open questions" sub={`Across ${byDisc.length} disciplines`} last>

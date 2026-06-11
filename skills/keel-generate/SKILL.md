@@ -17,7 +17,7 @@ This skill **manages checkout itself**: at the start (step 0) it calls `keel_pul
 
 ## Where files live
 
-- Reads: `discovery/open-questions.md` (gate check), `.keel/coverage-map.md` (re-scored), `.keel/decision-log.md`, and the evidence corpus.
+- Reads: `discovery/open-questions.md` (gate check), `.keel/coverage-map.md` (re-scored), `.keel/decision-log.md`, `.keel/instance-inventory.md` (**read-only** — keel-map owns it; generate renders and reconciles it, never edits it), and the evidence corpus.
 - Writes: the **six documents of the pack as six separate files** in `deliverables/` (create the folder if absent). These are the first user-facing outputs — they belong in the visible deliverables folder, not inside `.keel/`. Also writes **`.keel/scenario-coverage.md`** — the machine-readable `SCO-08` scenario ledger (internal machinery; see *The scenario ledger* below).
 
 ## Gate — refuse if not met
@@ -29,6 +29,8 @@ Read `discovery/open-questions.md`. **If any [BLOCK] remains, STOP** — do not 
 Read `constitution.md` (project root, then kit root). Two parts govern this skill:
 - **Part F — The Pack Structure** is the **rendering target**: it lists, per document, the exact sections (Key section · What it should cover · Owner) and their order. Render against it — do **not** improvise a structure per run.
 - **The Doctrine** governs what you *write* into those sections: no weasel words (run the precision linter), every module carries a measurable acceptance criterion, every exclusion is stated (silence is not inclusion), every statement traces to its source (Law 6).
+- **The pack stands alone (Law 12).** Spell every rule, threshold, formula, and enumeration out **in full at the point where it binds** — the reader must never need the RFP open beside the pack. An external citation is provenance only, written as a suffix (*"Source: RFP §4.4"* on its own `Source:` line), **never as the body** (*"matching is handled per §4.4 of the RFP"* is a generation defect the bundled linter fails). Internal pointers (to the RAID Register, to another pack section) remain correct and encouraged — Law 12 is about *external* documents.
+- **Plurals are enumerated (Law 13).** *"The required integrations"*, *"the standard reports"*, *"the approval rules"* — every such class renders as its named instances from `.keel/instance-inventory.md`, each spelled out individually.
 
 Part D (the dimension catalog) is the *completeness* target; Part F is the *document* target. Every Covered dimension lands in its mapped Part F section; every section is populated from covered dimensions + the decision log, never invented.
 
@@ -60,6 +62,7 @@ Write **all six** every run — never a single `discovery-pack.md`, never a subs
 - **coverage:** every Covered dimension is rendered into ≥1 section that lists its ID (invert the crosswalk) — nothing covered-but-unwritten;
 - **`DAT-07` join:** the AI accuracy bar reads identically in `F2.11` (Scope acceptance) and `F3.3` (AI/ML);
 - **`SCO-08` scenario join (Law 11):** per module, render the **happy-path scenario into `F2.3`** and the **exception + edge scenarios into `F2.8`** — each as either a real worked example (citing its source artifact) or its explicit disposition (out / N-A-with-reason / assumption); the two sections must concern the *same* workflow. A module scored `SCO-08` Covered shows, for every class, an example or a disposition — **no class left blank**. If `SCO-08` is Partial, write what exists and state plainly which class is claimed-but-unevidenced and the discovery activity that closes it — **never render a module scope-ready with a scenario class left in silence** (an explicit "no edge case, because X" is fine; a blank is not);
+- **`SCO-09` instance join (Law 13):** every instance marked `SPECIFIED` in `.keel/instance-inventory.md` is rendered **by name** into a target section of its host dimension (integrations → `F2.10`/`F3.6`, roles → `F2.13`, reports → `F2.18`, rules → `F2.7`); every `EXCLUDED` instance appears in the exclusions and rolls up to `F6.3`; an `OPEN` instance row or `OPEN` closed-world row keeps the pack a **DRAFT** and is stated plainly in the relevant section — never rendered as if settled;
 - **`SCO-04` / `COM-07` join:** every global exclusion in `F1.5` / `F2.14` is acknowledged in `F6.3`;
 - every in-scope module (`F2.2`) appears in the phase mapping (`F5.2`) — no orphan modules;
 - every integration named (`F2.10`) has an integration spec in `F3.6` (`ENG-04`);
@@ -73,7 +76,7 @@ Write **all six** every run — never a single `discovery-pack.md`, never a subs
 ```bash
 python3 <kit>/checks/check_generate.py <engagement-dir> <constitution.md>
 ```
-(`<kit>/checks/` sits next to the `constitution.md` you loaded; if the kit's `checks/` isn't present — e.g. only the constitution was copied into the project — say so and skip, noting the pack is unverified.) A **non-zero exit is a generation defect you fix now**, not something to leave for CI or the human: a dropped Part F section, a weasel word, a DRAFT-honesty miss, or — the SCO-08 ledger — a SILENT scenario / missing class / untraceable example. Fix upstream (decision-log / re-render) and re-run until the gate is green or every remaining failure is a genuine, reported freeze-prerequisite. Print the check output in the summary so the lead sees the machine verdict, not just your assertion.
+(`<kit>/checks/` sits next to the `constitution.md` you loaded; if the kit's `checks/` isn't present — e.g. only the constitution was copied into the project — say so and skip, noting the pack is unverified.) A **non-zero exit is a generation defect you fix now**, not something to leave for CI or the human: a dropped Part F section, a weasel word, a DRAFT-honesty miss, an **external back-reference as content** (the Law 12 linter — *"per §4.4 of the RFP"* in a binding doc), an **instance-inventory miss** (the SCO-09 reconciliation — a SPECIFIED instance never named in its target doc, a class without its closed-world row), or — the SCO-08 ledger — a SILENT scenario / missing class / untraceable example / a reason that states no grounds. Fix upstream (decision-log / re-render) and re-run until the gate is green or every remaining failure is a genuine, reported freeze-prerequisite. Print the check output in the summary so the lead sees the machine verdict, not just your assertion.
 
 **8 · Push — check back in (`phase="generate"`).** Once all six docs are written and the bundled check is green, push the pack so the **server** runs the authoritative gate and the dashboard records the render. Use the **begin → PUT → finish** flow — **never base64-encode the zip or read it into context; that stalls the agent for minutes and the push never lands**:
 ```bash

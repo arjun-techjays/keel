@@ -62,6 +62,17 @@ def _score(row_text: str) -> str:
     return "gap"
 
 
+# The coverage-map convention for a dispositioned Gap/Partial (constitution
+# Part B): `Partial — resolved (assumption RAID-A12)`. Matched tightly to the
+# "— resolved (" form so prose in the evidence cell ("conflict resolved by…")
+# can't flip the flag.
+_RESOLVED_RE = re.compile(r"[—–-]\s*resolved\s*\(", re.I)
+
+
+def _resolved(row_text: str, score: str) -> bool:
+    return score in ("partial", "gap") and bool(_RESOLVED_RE.search(row_text))
+
+
 def parse_dimensions(engagement: str, con) -> list[dict]:
     text = _read(os.path.join(engagement, ".keel", "coverage-map.md"))
     if text is None:
@@ -86,11 +97,13 @@ def parse_dimensions(engagement: str, con) -> list[dict]:
         evidence = cells[-1] if len(cells) >= 4 else None
         if evidence in ("—", "-", ""):
             evidence = None
+        score = _score(ln)
         dims[did] = {
             "dim_id": did,
             "discipline_id": disc,
             "name": label,
-            "score": _score(ln),
+            "score": score,
+            "resolved": _resolved(ln, score),
             "evidence": evidence,
         }
     return list(dims.values())
@@ -235,21 +248,29 @@ def ingest_generate(sb, project_id: str, engagement: str) -> dict:
 
     # Coverage is over APPLICABLE dimensions only — N-A dimensions are explicit
     # decisions (Law 10), not gaps, and must not dilute the percentage.
+    # Resolved (Part B) = covered + dispositioned: a Gap/Partial whose question
+    # was dispositioned no longer counts as unresolved, but stays distinct from
+    # Covered (evidenced). Resolved % is the headline progress number.
     applicable = [d for d in dims if d["score"] != "na"]
     total = len(applicable)
     covered = sum(d["score"] == "covered" for d in applicable)
+    resolved = covered + sum(d["resolved"] for d in applicable)
     pct = round(covered / total * 100) if total else 0
+    resolved_pct = round(resolved / total * 100) if total else 0
     open_q = sum(q["disposition"] in ("unanswered", "partial") for q in qs)
 
     sb.table("projects").update({
         "total_dims": total,
         "covered_count": covered,
         "coverage_pct": pct,
+        "resolved_count": resolved,
+        "resolved_pct": resolved_pct,
         "block_count": blocks,
         "open_questions": open_q,
     }).eq("id", project_id).execute()
 
     return {"dimensions": total, "covered": covered, "coverage_pct": pct,
+            "resolved": resolved, "resolved_pct": resolved_pct,
             "block_count": blocks, "open_questions": open_q}
 
 

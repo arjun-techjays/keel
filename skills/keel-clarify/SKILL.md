@@ -43,6 +43,11 @@ By discipline:  Product 3 (2🔴) · Engineering 5 (3🔴) · Data/ML 4 (4🔴) 
 
 This is the "better information" view: the lead should be able to see what is blocking, where it clusters, and what is merely nice-to-have — before deciding how to spend the session.
 
+**1b · The discipline filter — let the person choose what THEY are clarifying.** Not everyone answers everything: a developer should never be walked through UX questions, a designer not through integration auth. After showing the board, issue one `AskUserQuestion` (multiSelect) listing the disciplines that have open questions — label each with its open/blocking counts (e.g. `Engineering (5 open, 3🔴)`) — and let the person select which discipline(s) *this session* covers. Then work **only** the selected groups. The rules:
+- **Unselected questions are untouched** — still open, still **[BLOCK]** where tagged, never dispositioned, de-prioritized, or auto-assumed because this person skipped them. Filtering is about *who answers*, never about *whether* it gets answered.
+- The end-of-round report **names every unworked discipline** with its open/blocking counts and the suggested owner role: *"UX: 6 open, 2🔴 — needs a UX/design owner; Security: 3 open — needs the security lead."*
+- The gate math is unchanged: unselected [BLOCK]s still gate `keel-generate`.
+
 **2 · Choose how to answer.** Offer the lead three intake modes and let them pick:
 - **(a) Inline (guided)** — resolve questions one at a time via guided prompts, discipline by discipline (best for a working session with the lead in the room).
 - **(b) From files** — ingest material already dropped in `discovery/answers/` (notes, transcripts, memos).
@@ -53,8 +58,10 @@ This is the "better information" view: the lead should be able to see what is bl
 **4 · Interactive triage (modes a/c) — one question at a time via the structured question tool.**
 This is the inline UX, and it must be **one item per screen** — never dump a discipline's questions as a list and wait for prose. Walk the open questions one at a time and, for each, issue a single `AskUserQuestion` prompt (Claude's structured Q&A tool) so the lead resolves exactly one question per screen:
 - **header**: discipline + Q-id (e.g. `ENG · Q14`).
-- **question**: the full question text, plus a one-line *why it matters / what it blocks* so the lead has context.
-- **answering is the free-text path, never an explicit option.** The lead types the answer into the tool's built-in **"Type something"** field. **Do not add an "I'll answer it" option** — it just duplicates the free-text box. A typed answer → CLOSED, provenance `client lead, inline, <date>`; if it's vague, say so (it re-scores Partial on the next `keel-map` and spawns a follow-up).
+- **question**: the full question text, plus a one-line *why it matters / what it blocks* so the lead has context. **Research-sharpened questions carry example answers — use them as the option scaffold**: present the brief's 2–3 example answers as selectable options (the lead picks one or free-types), and point at the brief (`RB-03`) for the trade-offs.
+- **answering is the free-text path, never an explicit option.** The lead types the answer into the tool's built-in **"Type something"** field. **Do not add an "I'll answer it" option** — it just duplicates the free-text box. A typed answer → CLOSED, provenance `client lead, inline, <date>`.
+- **Sharpen vague answers NOW, in the same round — never kick the can.** If the answer is vague ("standard reports", "the usual approvals"), record it, then immediately write the sharpened follow-up: it **quotes the vague answer and names exactly what is missing** (*"You said 'standard reports' — name each report and its audience"*), tagged `raised-by: keel-clarify` and `supersedes: <Q-id>` where it replaces the original (mark the original `superseded-by:`). Present the follow-up in this session if the lead is still here; otherwise it waits in the register — but it exists *before* the round ends, not after the next re-score.
+- **Research what you can't ground (Law 14).** When a question lacks example answers, or an answer names a system / standard / regime the corpus can't ground ("we use cietrade", "Quebec tax applies"), research it before pressing on — same brief format and location as `keel-map`'s (`discovery/research/RB-<nn>-<slug>.md`) — so the follow-up is specific, not another generic probe. More research is always acceptable; a generic follow-up where a specific one was researchable is not.
 - **options** — the four explicit choices are the *dispositions* (what to do when there is no clean answer). Each must read as **visibly distinct from "Skip"** — never present two options that mean the same thing:
   1. **Make an assumption** — proceed on a stated assumption; capture its *impact-if-wrong* → RAID. **Resolves the gap (non-blocking).**
   2. **Exclude — out of scope** — the client acknowledges it's out; flows to scope exclusions. **Resolves (non-blocking).**
@@ -62,6 +69,8 @@ This is the inline UX, and it must be **one item per screen** — never dump a d
   4. **Skip — decide later** — **no** decision is made; the question stays open / **[BLOCK]** and is resurfaced in the end report.
 
   Keep that line sharp: options 1–3 each *close* the item (it leaves the blocking set); only **Skip** leaves it red. The per-option **note** field captures the specifics — the assumption text, which phase to defer to, the exclusion wording.
+
+  **Reasons carry their grounds (Part B).** A disposition note that states no basis — *"not applicable"*, *"out of scope"* with nothing behind it — fails the reason-quality bar and will fail the mechanical gate later. Push back **once**: ask what profile fact or evidence the decision rests on (*"out of scope because the client confirmed single-currency on the 6 May call"*), then record whatever the lead settles on. One push-back, not an argument.
 
 Process questions in **discipline order**, pausing after each discipline to print its mini-tally (`Engineering: 3 closed · 1 assumed · 1 still 🔴`) so progress is visible as you go. Two practical rules:
 - **Escape hatch** — before starting a discipline, offer the alternative: *"answer these one at a time (guided), or free-type answers to several at once?"* Guided one-by-one is best for deliberate triage; bulk free-typing is faster when the lead is transcribing answers they already have (e.g. reading from a call transcript). Honour the choice.
@@ -71,6 +80,8 @@ Process questions in **discipline order**, pausing after each discipline to prin
 
 **5a · Scenario gaps (`SCO-08`, Law 11) close by example or by an explicit decision — never by silence.** When the open item is a scenario class (happy / exception / edge) for a workflow, drive it to one of: (1) the lead **supplies the real example artifact** (drop in `discovery/answers/`; provenance = that file → re-scores Covered on the next `keel-map`); or (2) a **scenario disposition** — *not-applicable* (record the reason, e.g. "this module has no edge case because X" — a legitimate close, not a dodge), *out-of-scope* (the client signs that the unseen case is out), *assumption* (a stated behaviour, impact-if-wrong → RAID), or *defer / T&M*. A bare prose description of how the scenario *would* behave is **not** a demonstrated fact — record it as an **assumption** (impact-if-wrong), which closes it non-blocking but flags it unvalidated. The only state that stays red is a class **claimed-handled but neither exampled nor decided** — the exception-in-silence the gate exists to stop. Weight the **exception** class hardest before letting a module go green.
 
+**5b · Instance items (`SCO-09`, Law 13) close per instance, and closed-world questions close on the record.** When the open item concerns a named instance (an integration, role, report, rule, tax regime), the answer must clear *that instance's* bar — and the **instance name goes into the decision-log entry verbatim**, so `keel-map` can update its row in `.keel/instance-inventory.md`. A closed-world question (*"are these ALL the integrations?"*) resolves to exactly one of: **confirmed** (with provenance — who confirmed, when), an **assumption** (impact-if-wrong → RAID-A: the unlisted instance is unpriced work), or an **exclusion/deferral** of the unconfirmed remainder. A closed-world question never closes on a shrug — it is the precise line between "the integrations we priced" and "the integrations we'll discover in build".
+
 **6 · Adjudicate conflicts (Law 7).** When new material settles a conflict, record the resolution, **which source won, and why**. When it deepens or creates one, raise it. Never reconcile silently.
 
 **7 · Capture what the round raised.** Discovery surfaces new gaps — expect the question set to *grow before it shrinks*. New questions get IDs, tags, owners, and a discipline; some will be blocking. This is healthy: better found now than in build.
@@ -79,6 +90,7 @@ Process questions in **discipline order**, pausing after each discipline to prin
 
 **9 · Write `.keel/decision-log.md` and the updated `discovery/open-questions.md`. Then report the round** in the terminal:
 - a **per-discipline resolution table** (closed / assumed / excluded / deferred / T&M / still-open this round);
+- the **unworked disciplines** (filtered out in 1b): open/blocking counts + the suggested owner role for each;
 - the **[BLOCK] remaining** — *computed from the file, not estimated*;
 - the **gate status** (`🔴 N blocking → keel-generate gated` or `🟢 0 blocking → keel-generate unlocked`);
 - the **single next discovery action** (highest-value question or session still open).
