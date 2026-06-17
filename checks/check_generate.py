@@ -31,7 +31,7 @@ import os
 import re
 import sys
 
-from keel_lib import (Report, find_constitution, parse_constitution,
+from keel_lib import (Report, SECT_RE, find_constitution, parse_constitution,
                       parse_ledger)
 
 DOC_FILES = {
@@ -139,12 +139,17 @@ def run(engagement: str, con_override: str | None = None) -> Report:
         with open(p, encoding="utf-8") as fh:
             texts[doc] = fh.read().lower()
 
-    # 2. every Part F section present in its document
+    # 2. every Part F section present in its document. A section whose
+    # constitutional Renders-from is empty is synthesis-only / engagement-
+    # conditional (e.g. F2.24 project-specific areas): it carries no mandatory
+    # catalog-dimension content, so it is present-if-used, never required.
     for doc, sids in c.doc_sections.items():
         if doc not in texts:
             continue
         for sid in sids:
             s = c.sections[sid]
+            if not s.renders_from:
+                continue
             if not section_present(texts[doc], sid, s.title):
                 r.fail(f"{DOC_FILES[doc]}: missing Part F section {sid} "
                        f"({s.title})")
@@ -155,17 +160,28 @@ def run(engagement: str, con_override: str | None = None) -> Report:
         for d in s.renders_from:
             dim_docs.setdefault(d, set()).add(s.doc)
 
-    # 3. covered-dimension rendering (needs an ID-bearing coverage map)
+    # 3. covered-dimension rendering (needs an ID-bearing coverage map).
+    # Project-specific PRJ-* dims resolve their Part F home from the per-
+    # engagement registry (.keel/project-dimensions.md), not the constitution
+    # crosswalk — a Covered PRJ-* with no home there warns (it stays a tracked
+    # open area), where a homeless catalog dim is a hard failure.
     covered = _covered_dims(engagement)
     if covered is None:
         r.warn("coverage-map has no dimension IDs — pre-encoding engagement; "
                "skipping covered→section rendering check. Re-run keel-map to "
                "produce an ID-keyed coverage map.")
     else:
+        prj_homes = _prj_homes(engagement)
         for dim in sorted(covered):
-            docs = dim_docs.get(dim)
+            docs = dim_docs.get(dim) or prj_homes.get(dim)
             if not docs:
-                r.fail(f"Covered dimension {dim} has no Part F home (crosswalk)")
+                if dim.startswith("PRJ-"):
+                    r.warn(f"Covered PRJ dimension {dim} has no Part F home in "
+                           f".keel/project-dimensions.md — route it to a "
+                           f"section or to F2.24")
+                else:
+                    r.fail(f"Covered dimension {dim} has no Part F home "
+                           f"(crosswalk)")
                 continue
             if not any(dim.lower() in texts.get(d, "") or
                        _rendered_in(c, texts, dim) for d in docs):
@@ -512,9 +528,11 @@ def _check_questions(r: Report, engagement: str) -> int | None:
         if tag not in Q_TAGS:
             r.warn(f"RAID-Q: question '{qid}' has unrecognised tag '{tag}'")
         if disp != "SUPERSEDED" and not DIM_ID_RE.search(dims_cell) \
-                and "RAID-" not in dims_cell:
+                and "RAID-" not in dims_cell and "PRJ" not in dims_cell:
             # the OQ-07 hole: a question no dimension can claim is invisible
-            # to coverage routing and to the dashboard's discipline grouping
+            # to coverage routing and to the dashboard's discipline grouping.
+            # A PRJ / PRJ-GEN cell (project-specific dim or adversarial gap-hunt
+            # finding) is a legitimate non-catalog reference and is exempt.
             no_dim += 1
             r.warn(f"RAID-Q: question '{qid}' cites no constitution dimension "
                    f"— it cannot be routed to a discipline or a coverage gap")
@@ -565,6 +583,29 @@ def _covered_dims(engagement: str):
         if m and "covered" in ln.lower():
             covered.add(m.group(1))
     return covered
+
+
+def _prj_homes(engagement: str) -> dict[str, set[int]]:
+    """Per-engagement Part F homes for project-specific PRJ-* dimensions, read
+    from .keel/project-dimensions.md's "Renders into" column. PRJ-* dims live in
+    engagement state (never the constitution catalog), so their crosswalk is
+    resolved here rather than from Part F's Renders-from. Returns {PRJ-01: {2,3}}.
+    """
+    rows = parse_ledger(os.path.join(engagement, ".keel",
+                                     "project-dimensions.md"))
+    if not rows:
+        return {}
+    homes: dict[str, set[int]] = {}
+    for cells in rows:
+        # | ID | Dimension | Applies when | "Covered" means | Renders into | Lens |
+        did = cells[0].strip()
+        if not did.upper().startswith("PRJ-"):
+            continue
+        renders = cells[4] if len(cells) > 4 else ""
+        docs = {int(m.group(1)) for m in SECT_RE.finditer(renders)}
+        if docs:
+            homes[did] = docs
+    return homes
 
 
 # A genuine blocking question is a line tagged [BLOCK] that ALSO carries a

@@ -165,13 +165,21 @@ def _questions_from_ledger(engagement: str) -> list[dict] | None:
             continue
         disp, label = _LEDGER_DISP.get(disp_key, ("unanswered", "Open"))
         tag = cells[2].strip().upper()
+        dims = ID_RE.findall(cells[1])
+        # An adversarial gap-hunt finding (keel-review) cites no catalog dim; its
+        # Dimensions cell carries the bare token "PRJ-GEN" (no digits, so ID_RE
+        # finds nothing). Bucket it under the PRJ pseudo-discipline so the
+        # dashboard groups it instead of dropping it. (Project-specific PRJ-NN
+        # dims have a two-digit suffix and are already captured by ID_RE.)
+        if not dims and "PRJ" in cells[1].upper():
+            dims = ["PRJ-GEN"]
         qs[qid] = {
             "q_id": qid,
             "text": cells[4].strip() or qid,
             "tag": "BLOCK" if tag == "BLOCK" else None,
             "disposition": disp,
             "disposition_label": label,
-            "dims": ID_RE.findall(cells[1]),
+            "dims": dims,
         }
     return list(qs.values())
 
@@ -245,7 +253,10 @@ def parse_review(engagement: str) -> dict | None:
             continue
         sv = sev.group(1).lower()
         severity = "high" if sv.startswith("high") else "med" if sv.startswith("med") else "low"
-        refs = ID_RE.findall(s) + SECT_RE.findall(s)
+        # Collapse the PRJ-GEN-<n> human handle before extracting catalog refs,
+        # or ID_RE would mine a phantom "GEN-<n>" (3 letters + 2 digits) out of it.
+        s_refs = re.sub(r"PRJ-GEN-\d+", "PRJ-GEN", s)
+        refs = ID_RE.findall(s_refs) + SECT_RE.findall(s_refs)
         findings.append({
             "finding_id": fid.group(1),
             "severity": severity,

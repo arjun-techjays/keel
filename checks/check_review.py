@@ -65,8 +65,13 @@ def run(engagement: str, con_override: str | None = None) -> Report:
         deliv = os.path.join(engagement, "deliverables")
         present_docs = {int(fn[0]) for fn in os.listdir(deliv)
                         if fn[0].isdigit()} if os.path.isdir(deliv) else set()
+        # A section whose constitutional Renders-from is empty is synthesis-only
+        # / engagement-conditional (e.g. F2.24 project-specific areas): present-
+        # if-used, so it is not a required probe target when unused. (Matches
+        # check_generate's section-presence treatment.)
         expected = {sid for sid in all_sections
-                    if c.sections[sid].doc in present_docs}
+                    if c.sections[sid].doc in present_docs
+                    and c.sections[sid].renders_from}
         missing = sorted(expected - referenced, key=_k)
         if missing:
             r.warn(f"coverage ledger does not reference {len(missing)} section(s): "
