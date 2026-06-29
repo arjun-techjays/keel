@@ -58,6 +58,10 @@ The lock is held from `/keel-pull` to `/keel-push` (or a manual release / ~15-mi
 
 `1` Executive Summary · `2` Scope (incl. Requirements) · `3` Technical Architecture · `4` RAID Register · `5` Implementation Plan · `6` Approval / Sign-off — written to `deliverables/` as six separate files, each structured to its Part F section list.
 
+### Enriching to a branded deliverable (`/keel-enrich`)
+
+A fifth skill, **`/keel-enrich`**, turns the gated skeleton into the **client-ready document**: it expands every section to full depth (named sub-sections, tables, worked examples), authors the diagrams (context, component, ERDs, flows, Gantt, risk heatmap), and renders a **branded Word `.docx`** — techjays cover, embedded fonts, editorial tables, and stat cards — against `enrichment-spec.md` (depth) and `design-system.md` (the editorial visual standard). The skeleton stays the gated source of truth; enrichment is a **faithful presentation transform** — it never invents decisions (proposed design is marked, gaps are stated). Run it once the pack is clean (post-`keel-review`).
+
 ### The loop
 
 Each line below is marked by who acts. **You invoke the skills and supply the discovery; the kit writes every artifact (the coverage map, the questions, the pack).** You never author those files yourself.
@@ -82,6 +86,9 @@ Legend:   👤 you do this      ⚙️ the kit does this (inside a skill run)
         ▼
 ⚙️  /keel-review     red-teams the pack → findings flow back into the register
         │            ↺ /keel-clarify → re-generate → re-review · until 0 High + full coverage
+        ▼
+⚙️  /keel-enrich     expands + diagrams + renders the branded .docx (client-ready)
+        │
         ▼
 👤  make the Recommended decisions, sign, freeze     =  FROZEN, signable baseline
 ```

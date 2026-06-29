@@ -13,5 +13,9 @@ class Settings(BaseSettings):
 
     lease_ttl_minutes: int = 15
 
+    # Pandoc branding reference .docx for the render pipeline (app/render.py). Empty
+    # or a missing file ⇒ render still works, just unbranded (pandoc default styles).
+    reference_doc_path: str = ""
+
 
 settings = Settings()

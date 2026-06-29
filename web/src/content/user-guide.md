@@ -53,7 +53,7 @@ Every tab carries the project's tab bar (Overview · Questions · Coverage · Pa
 - **Overview** — this project's dashboard: freeze status, `[BLOCK]` count, coverage, the phase pipeline, coverage by discipline, and open questions. The **checkout controls** (Pull / Push / Release) live here.
 - **Questions (Clarify)** — open questions grouped by **discipline** (Scope, Data & Privacy, Security, …), each showing its status. Click a question to read it; closed items show a check. *Answering happens in your agent or via push* — this tab is the shared view of what's open and how it was closed.
 - **Coverage** — every dimension, scored **Covered / Partial / Gap / N/A**. **Click any dimension** to inspect it (its evidence, score, and any blocker). **N/A** dimensions were *ruled out by the project's profile* (recorded decisions, e.g. "no AI → AI-accuracy N/A") — not gaps or skips; click one to see the reason. They're excluded from the coverage %.
-- **Pack** — the six rendered deliverables. The tab is **empty until you push a `generate`** (run `/keel-generate` first); after that it **renders the actual document content** (pulled live from the latest snapshot) with its **DRAFT / FROZEN** status and gate result. **Export PDF** prints via your browser's *Save as PDF*.
+- **Pack** — the six rendered deliverables. The tab is **empty until you push a `generate`** (run `/keel-generate` first); after that it **renders the actual document content** (pulled live from the latest snapshot) with its **DRAFT / FROZEN** status and gate result. **Export PDF** prints via your browser's *Save as PDF* — a quick copy. For the **client-ready deliverable, run `/keel-enrich`**: it produces the deep, **branded Word `.docx`** (techjays cover & fonts, editorial tables, diagrams, and stat cards).
 - **Review** — the scope-risk findings and the freeze verdict.
 
 ### Dashboard (admins only)
@@ -123,7 +123,7 @@ cp keel/constitution.md .          # the standard the skills score against
 cp -r keel/checks .                # the mechanical gate scripts (stdlib python3)
 ```
 
-In a Claude Code session, run `/mcp` to confirm `keel` is connected, and the skills `/keel-connect`, `/keel-pull`, `/keel-map`, `/keel-clarify`, `/keel-generate`, `/keel-review`, `/keel-push` should appear. Without a valid token every Keel tool returns `401` — generate one in the web app first.
+In a Claude Code session, run `/mcp` to confirm `keel` is connected, and the skills `/keel-connect`, `/keel-pull`, `/keel-map`, `/keel-clarify`, `/keel-generate`, `/keel-review`, `/keel-enrich`, `/keel-push` should appear. Without a valid token every Keel tool returns `401` — generate one in the web app first.
 
 ### 6b. One-time setup — Codex
 
@@ -202,8 +202,16 @@ mkdir northwind && cd northwind
 #    (clarify→generate) and push again. (Web alternative: Overview → Pull & lock →
 #    upload zip → Push → Release.)
 
-# 10. FREEZE + PDF — make the Recommended decisions, get sign-off, export
-#    Pack tab → Export PDF  (your browser's Save as PDF produces the client PDF)
+# 10. ENRICH — turn the gated skeleton into the deep, branded .docx pack
+/keel-enrich
+#    AUTO: pulls at start; expands every section to full depth (named sub-sections,
+#    tables, diagrams, stat cards), renders the branded Word .docx (techjays cover &
+#    fonts, editorial tables/figures), then pushes. Run once the pack is clean (post-review).
+#    writes the enriched deliverables + the branded .docx (rendered with the techjays template)
+
+# 11. FREEZE + EXPORT — make the Recommended decisions, get sign-off, share
+#    the branded .docx from /keel-enrich is the client deliverable;
+#    Pack tab → Export PDF stays a quick browser Save-as-PDF copy
 ```
 
 **The rhythm to remember:**
@@ -212,7 +220,7 @@ mkdir northwind && cd northwind
 - **`/keel-map` · `/keel-clarify` · `/keel-generate` · `/keel-review` — the work.** Each one **pulls at the start** (takes the lock, downloads the latest) and **pushes at the end** (runs the right gate, syncs the dashboards, releases the lock). You just run the work skill; checkout is handled.
 - **`/keel-pull` · `/keel-push` — escape hatches.** Manual checkout for the cases the skills don't cover: re-taking a lock after a `409`, inspecting current state, or pushing files you edited by hand. `/keel-push` takes a phase (`map` | `generate` | `review`).
 
-> Tip: steps 2–9 happen entirely in your agent. You only need the web app to *create* the project (step 0), make the Recommended decisions, view the team dashboards, and export the final PDF.
+> Tip: steps 2–10 happen entirely in your agent. You only need the web app to *create* the project (step 0), make the Recommended decisions, view the team dashboards, and grab the final deliverable.
 
 > **When is it locked?** From a pull until the matching push (or `keel_release`, or a ~15-min idle auto-free) — and since each work skill pulls then pushes, the lock is now typically held only for the duration of that one skill. While you hold it, everyone else is view-only. If you stop mid-skill or hold it by hand without pushing, release so you don't block teammates.
 

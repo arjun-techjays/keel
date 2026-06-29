@@ -164,6 +164,14 @@ def do_delete_project(user_id: str, project_id: str, confirm: str) -> dict:
                   .eq("project_id", project_id).execute().data or [])
         if r.get("storage_path")
     ]
+    # do_render_docx stores branded .docx zips at {project_id}/renders/… without a
+    # tracked row, so sweep that storage prefix directly or they orphan on delete.
+    try:
+        listed = sb.storage.from_("snapshots").list(f"{project_id}/renders") or []
+        snap_paths += [f"{project_id}/renders/{o['name']}"
+                       for o in listed if o.get("name")]
+    except Exception:
+        pass  # best-effort; orphaned objects are recoverable noise
     upload_paths = [
         r["answer_file_path"]
         for r in (sb.table("questions").select("answer_file_path")
@@ -240,6 +248,114 @@ def get_deliverable(project_id: str, n: int) -> str | None:
     except Exception:
         return None
     return None
+
+
+def do_render_docx(user_id: str, project_id: str) -> dict:
+    """Render the latest pushed pack's deliverables to branded .docx, bundle them
+    (+ any SVG attachments) into a zip, store it as a downloadable render artifact,
+    and return a signed URL — the same store-then-sign pattern as do_pull.
+
+    Read-only with respect to the pack (additive): it consumes the latest *render's*
+    snapshot — the last actual generate that produced a deliverables/ pack — and never
+    mutates it. Editor-gated, since it writes the artifact to storage and runs compute.
+
+    The render itself is environment-agnostic (app/render.py); this wrapper only does
+    the Supabase fetch/store. It needs pandoc + the local diagram renderers (mmdc/d2)
+    present in the container — see the Dockerfile. If none of the deliverables produce
+    a .docx (e.g. pandoc missing), it fails loudly with the renderer warnings rather
+    than storing an empty bundle."""
+    sb = admin()
+    if not is_editor(sb, user_id, project_id):
+        return {"ok": False, "status": 403, "error": "You're not an editor of this project"}
+
+    rnd = (
+        sb.table("renders").select("version,storage_path")
+        .eq("project_id", project_id).order("version", desc=True).limit(1).execute().data
+    )
+    if not rnd:
+        return {"ok": False, "status": 404, "error": "No generated pack to render yet"}
+    version = rnd[0]["version"]
+    snap_path = rnd[0]["storage_path"]
+
+    try:
+        r = httpx.get(
+            f"{settings.supabase_url}/storage/v1/object/snapshots/{snap_path}",
+            headers=_storage_headers(), timeout=120,
+        )
+        r.raise_for_status()
+        content = r.content
+    except Exception as e:
+        return {"ok": False, "status": 502, "error": f"could not fetch snapshot v{version}: {e}"}
+
+    from . import render as render_mod  # local renderer module (stdlib + lazy python-docx)
+
+    ref = settings.reference_doc_path or None
+    if ref and not os.path.exists(ref):
+        ref = None  # branding reference not bundled yet → unbranded, still valid
+    cover_image = logo = None
+    if ref:  # the cover hero + logo sit beside the reference doc (assets/branding/)
+        hero = os.path.join(os.path.dirname(ref), "techjays-cover.jpg")
+        cover_image = hero if os.path.exists(hero) else None
+        mark = os.path.join(os.path.dirname(ref), "techjays-logo.png")
+        logo = mark if os.path.exists(mark) else None
+
+    warnings: list[str] = []
+    with tempfile.TemporaryDirectory() as tmp:
+        with zipfile.ZipFile(io.BytesIO(content)) as zf:
+            zf.extractall(tmp)
+        root = _engagement_root(tmp)
+        deliverables = os.path.join(root, "deliverables")
+        if not os.path.isdir(deliverables):
+            return {"ok": False, "status": 422, "error": "snapshot v%d has no deliverables/ to render" % version}
+
+        out_dir = os.path.join(tmp, "_render")
+        results = []
+        for fname in DELIVERABLE_FILES.values():  # the six docs, in canonical order
+            src = os.path.join(deliverables, fname)
+            if not os.path.exists(src):
+                continue
+            try:
+                res = render_mod.render_markdown_file(src, out_dir, reference_doc=ref,
+                                                     cover_image_path=cover_image, logo_path=logo)
+            except render_mod.RenderError as e:
+                return {"ok": False, "status": 500, "error": f"render failed on {fname}: {e}"}
+            warnings.extend(res.warnings)
+            results.append(res)
+
+        docx_paths = [res.docx for res in results if res.docx and os.path.exists(res.docx)]
+        if not docx_paths:
+            return {"ok": False, "status": 500,
+                    "error": "no .docx produced — pandoc or a diagram renderer is likely missing",
+                    "warnings": warnings}
+
+        bundle = io.BytesIO()
+        with zipfile.ZipFile(bundle, "w", zipfile.ZIP_DEFLATED) as zf:
+            for path in docx_paths:
+                zf.write(path, arcname=os.path.basename(path))
+            att = os.path.join(out_dir, "attachments")
+            if os.path.isdir(att):
+                for f in sorted(os.listdir(att)):
+                    zf.write(os.path.join(att, f), arcname=f"attachments/{f}")
+        bundle_bytes = bundle.getvalue()
+        figures = sum(len(res.figures) for res in results)
+
+    # Store under a distinct renders/ namespace in the snapshots bucket (re-render
+    # overwrites via upsert). NOTE: these artifacts are not removed by
+    # do_delete_project's storage sweep (which keys off snapshots/renders ROWS) — a
+    # follow-up should extend that sweep to the `{id}/renders/` prefix or add a
+    # render_artifacts table. Storage-orphan only; never a half-deleted project.
+    artifact_path = f"{project_id}/renders/v{version}-docx.zip"
+    sb.storage.from_("snapshots").upload(
+        artifact_path, bundle_bytes, {"content-type": "application/zip", "upsert": "true"}
+    )
+    signed = sb.storage.from_("snapshots").create_signed_url(artifact_path, 3600)
+    url = signed.get("signedURL") or signed.get("signedUrl")
+    _log(sb, project_id, user_id, "render_docx", target=artifact_path,
+         meta={"version": version, "docx": len(docx_paths), "figures": figures})
+    return {
+        "ok": True, "version": version, "docx_count": len(docx_paths), "figures": figures,
+        "download_url": url, "storage_path": artifact_path, "warnings": warnings,
+    }
 
 
 def _next_version(sb, project_id: str) -> int:

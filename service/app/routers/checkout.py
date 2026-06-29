@@ -55,3 +55,10 @@ async def push(
 ):
     content = await file.read()
     return _result(core.do_push(user.id, project_id, content, phase))
+
+
+@router.post("/render-docx")
+def render_docx(project_id: str, user: User = Depends(get_current_user)):
+    """Render the latest pushed pack's deliverables to branded .docx, store the bundle
+    as a render artifact, and return a signed download URL."""
+    return _result(core.do_render_docx(user.id, project_id))

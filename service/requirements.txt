@@ -10,3 +10,7 @@ pydantic-settings>=2.4
 # locks the version whose routing we verified (serves at /mcp/).
 mcp==1.27.2
 httpx>=0.27
+# Render pipeline (app/render.py): python-docx wraps wide figures in landscape
+# sections after pandoc (which can't do per-section orientation). The diagram
+# renderers (mmdc, d2) and pandoc itself are SYSTEM binaries — see the Dockerfile.
+python-docx>=1.1
