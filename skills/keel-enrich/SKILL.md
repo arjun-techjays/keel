@@ -46,7 +46,7 @@ Three rules make this a *faithful transform*, not a second authoring pass:
 
 - The **enriched six documents** — every Part F section expanded to its `enrichment-spec.md` depth target, plus the doc-level additions the spec requires (cover/title block, `§0` Purpose · Audience · Definitions, numbered `Figure N — <caption>` references, and the **Figure sources appendix**).
 - The **diagram image assets** (`deliverables/assets/figures/`) the render step produces from the fenced source.
-- The branded **`.docx`** per document (`deliverables/docx/`), rendered through `techjays-reference.docx`.
+- The branded **`.docx`** pack — rendered server-side by `keel_render` through `techjays-reference.docx` and returned as a signed download link (offline alternative: local `python -m app.render` → `deliverables/docx/`).
 
 ## Workflow
 
@@ -78,14 +78,7 @@ python3 <kit>/checks/check_generate.py <engagement-dir> <constitution.md>
 ```
 (`<kit>/checks/` sits beside the `constitution.md` you loaded; if it isn't present, say so and skip, noting the pack is unverified.) A **non-zero exit is a defect you fix now** — a dropped section, a weasel word the expansion introduced, a DRAFT-honesty miss, an instance-inventory or `SCO-08`-ledger mismatch the enriched prose drifted from. Print its output in the summary so the lead sees the machine verdict.
 
-**5 · Render — emit the branded `.docx`.** Produce the branded output from the enriched markdown. **Primary (local, privacy-safe):** invoke the render module, which wraps `pandoc … --reference-doc=<reference.docx>` plus **local** diagram rasterisation (mermaid-cli / self-hosted Kroki, PNG at 3× scale, own-page / landscape layout per the spec):
-```bash
-cd service && python -m app.render ../deliverables \
-  --reference-doc ../assets/branding/techjays-reference.docx --out ../deliverables/docx
-```
-**Alternative (platform):** push the enriched markdown + diagram source to the **server render endpoint** (Keel's own render service on Railway), which runs the same pandoc + **self-hosted** diagram renderer server-side. Either path is acceptable; **neither may route diagram source to a public service** (the Law-12-adjacent privacy rule). State which path you used and where the `.docx` files landed. *(Both `service/app/render.py` and `assets/branding/techjays-reference.docx` are interface assumptions — see the note at the end; if the render module isn't present, write the enriched markdown + Figure sources appendix and report the `.docx` as not-yet-rendered rather than improvising a renderer.)*
-
-**6 · Push / handoff.** Push so the **server** re-runs the authoritative gate against the enriched pack and records the branded render. Use the **begin → PUT → finish** flow — **never base64-encode the zip or read it into context; that stalls the agent for minutes and the push never lands**:
+**5 · Push — check the enriched pack back in.** The server renders from the latest snapshot, so push *before* rendering. The push re-runs the authoritative gate against the enriched pack. Use the **begin → PUT → finish** flow — **never base64-encode the zip or read it into context; that stalls the agent and the push never lands**:
 ```bash
 zip -r .keel/_push.zip .keel discovery deliverables -x '.keel/_push.zip'
 ```
@@ -93,7 +86,9 @@ zip -r .keel/_push.zip .keel discovery deliverables -x '.keel/_push.zip'
 - `curl -sS -X PUT "<upload_url>" --data-binary @.keel/_push.zip -H "Content-Type: application/zip"`
 - `keel_push_finish(project_id, version, phase="generate")`
 
-Then `rm -f .keel/_push.zip`. Report the returned `gate` verdict **verbatim**, the snapshot `version`, **what was written** (the six enriched docs, the figure count, the `.docx` location), and that **the lock is released**. *(There is no dedicated `enrich` server phase; enrich reuses `generate` because its output is still the six-doc pack `check_generate` validates and the render the Pack tab records — now the branded version. A red gate is a reported outcome — fix upstream → re-generate → re-enrich, then push again.)* If a step fails (transport/`409`), tell the user they can retry by hand with `/keel-push` (phase `generate`).
+Then `rm -f .keel/_push.zip`. Report the `gate` verdict **verbatim** and the snapshot `version`; `keel_push_finish` releases the lock. *(No dedicated `enrich` server phase — enrich reuses `generate`; its output is still the six-doc pack `check_generate` validates and the Pack tab records — now the branded version.)* On a transport/`409` failure, retry by hand with `/keel-push` (phase `generate`).
+
+**6 · Render the branded `.docx` — server-side, no local toolchain.** Call **`keel_render(project_id)`**. The service renders the just-pushed enriched pack through `pandoc` + the techjays reference doc, **rasterises the diagrams with its own local renderer** (the privacy rule holds — diagram source never leaves the service), bundles the six branded `.docx`, and returns a signed **`download_url`**. **Report that URL to the user — it is the client-ready pack** (it also surfaces in the dashboard's Pack tab). Rendering only reads the latest snapshot, so it needs no lock. *(Offline/dev alternative, only if you have pandoc + mermaid-cli installed locally: `cd service && python -m app.render ../deliverables --reference-doc ../assets/branding/techjays-reference.docx --out ../deliverables/docx`. Never route diagram source to a public service.)*
 
 ## Handoff
 
@@ -114,9 +109,6 @@ keel-review   (red-teams the enriched pack)
 freeze + sign-off
 ```
 
-## Interface assumptions to reconcile
+## Render & assets — in place
 
-These are referenced by their agreed paths but are not yet present in the repo — flag them when running until they land:
-- **Render module:** `service/app/render.py`, invoked as `python -m app.render <deliverables_dir> --reference-doc <reference.docx> --out <dir>` (run from `service/`, where `app` is the package). It must wrap `pandoc --reference-doc=…` **plus** a **local/self-hosted** diagram renderer (mermaid-cli / Kroki), per the spec's privacy rule.
-- **Branding reference:** `assets/branding/techjays-reference.docx` (cover, logo header, brand-colour headings, TOC, page numbers, footers — built from the reference document's own theme).
-- **Server phase:** no `enrich` phase exists server-side; enrich pushes `phase="generate"`. If a dedicated `enrich` phase is added later, switch to it.
+The render path is **live**: **`keel_render(project_id)`** (MCP) renders server-side via `service/app/render.py` + `assets/branding/techjays-reference.docx` (techjays cover, embedded fonts, editorial tables, local diagram rendering) and returns a signed download URL. There is no dedicated `enrich` server phase — enrich pushes `phase="generate"` (its output is still the six-doc pack the gate validates). The local `python -m app.render` CLI remains an offline/dev alternative for anyone who has pandoc + mermaid-cli installed.

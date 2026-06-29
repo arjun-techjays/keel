@@ -203,6 +203,19 @@ def keel_release(project_id: str) -> dict:
     return core.do_release(uid, project_id)
 
 
+@mcp.tool()
+def keel_render(project_id: str) -> dict:
+    """Render the latest pushed pack into a branded Word .docx and return a signed
+    `download_url`. The service runs pandoc + the techjays reference doc and rasterises
+    the diagrams with its OWN local renderer (diagram source never leaves the service) —
+    so no local toolchain is needed. Run AFTER keel-enrich has pushed the enriched pack
+    (phase='generate'); rendering only reads the latest snapshot, so it needs no lock."""
+    uid = _uid()
+    if not uid:
+        return {"ok": False, "error": "unauthenticated"}
+    return core.do_render_docx(uid, project_id)
+
+
 # ---- resources -------------------------------------------------------------
 
 @mcp.resource("keel://projects/{project_id}/coverage")
